@@ -1,0 +1,1477 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QAT — interactive training</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+
+<style>
+:root{
+  --paper:#F2F5F3; --card:#FFFFFF; --ink:#14312C; --ink2:#4E635E; --ink3:#7C8F8A;
+  --rule:#D6DFDB; --rule2:#E6ECE9;
+  --under:#A63125; --low:#B4831C; --ok:#2E7A63; --over:#3C6398; --out:#5B1F18;
+  --sans:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --serif:"Source Serif 4",Georgia,serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased}
+button,input,select{font-family:var(--sans)}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--ok);outline-offset:2px;border-radius:3px}
+.shell{max-width:1140px;margin:0 auto;padding:0 20px 90px}
+
+/* top bar */
+.top{position:sticky;top:0;z-index:30;background:var(--paper);border-bottom:1px solid var(--rule);padding:12px 0 0}
+.top-in{display:flex;align-items:center;gap:16px;flex-wrap:wrap;max-width:1140px;margin:0 auto;padding:0 20px}
+.wordmark{font-family:var(--sans);font-weight:700;letter-spacing:-.02em;font-size:18px}
+.wordmark span{color:var(--ink3);font-weight:500}
+.tabs{display:flex;gap:2px;margin-left:auto}
+.tab{font-size:14px;font-weight:500;border:0;background:none;color:var(--ink2);padding:7px 12px;border-radius:6px}
+.tab[data-on="1"]{background:var(--ink);color:#fff;font-weight:600}
+.meterwrap{max-width:1140px;margin:10px auto 0;padding:0 20px}
+.meter{height:3px;background:var(--rule);border-radius:2px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--ok);transition:width .4s ease}
+
+/* layout */
+.grid{display:grid;gap:34px;margin-top:30px}
+@media(min-width:900px){.grid{grid-template-columns:232px 1fr;gap:52px}}
+
+/* sidebar */
+.rail{font-family:var(--sans);font-size:14px}
+@media(max-width:899px){.rail{position:relative}}
+.railgroup{margin-bottom:20px}
+.railtitle{font-size:12px;font-weight:700;color:var(--ink3);margin:0 0 8px}
+.railtitle b{color:var(--ink2);font-weight:700}
+.railitems{list-style:none;margin:0;padding:0}
+.railitems li{position:relative;padding-left:22px}
+.railitems li::before{content:"";position:absolute;left:4px;top:19px;bottom:-2px;width:1px;background:var(--rule)}
+.railitems li:last-child::before{display:none}
+.dot{position:absolute;left:0;top:12px;width:9px;height:9px;border-radius:50%;background:var(--rule)}
+li[data-state="done"] .dot{background:var(--ok)}
+li[data-state="now"] .dot{background:var(--ink);box-shadow:0 0 0 4px rgba(20,49,44,.12)}
+.node{background:none;border:0;padding:5px 0;text-align:left;color:var(--ink3);font:inherit;width:100%;line-height:1.35}
+li[data-state="done"] .node{color:var(--ink2)}
+li[data-state="now"] .node{color:var(--ink);font-weight:600}
+.mins{display:block;font-size:11.5px;color:var(--ink3);font-weight:400}
+
+/* lesson */
+.kicker{font-family:var(--sans);font-size:12.5px;font-weight:600;color:var(--ok);margin:0 0 6px}
+h1{font-family:var(--sans);font-weight:700;letter-spacing:-.025em;line-height:1.12;margin:0 0 18px;font-size:33px}
+h2{font-family:var(--sans);font-weight:600;letter-spacing:-.015em;font-size:20px;margin:32px 0 10px}
+p{margin:0 0 15px;max-width:64ch}
+.lede{font-size:19px;color:var(--ink2)}
+.blist{max-width:64ch;margin:0 0 15px;padding-left:20px}
+.blist li{margin-bottom:6px}
+.defn{border-left:3px solid var(--ink);padding:2px 0 2px 16px;margin:20px 0;max-width:64ch}
+.defn b{font-family:var(--sans);font-size:15px;display:block;margin-bottom:2px}
+.note{background:var(--card);border:1px solid var(--rule);border-radius:9px;padding:14px 17px;margin:20px 0;max-width:64ch;font-size:16px}
+.note b{font-family:var(--sans);font-size:13px;display:block;margin-bottom:4px;color:var(--ok)}
+.eq{font-family:var(--sans);font-weight:500;font-size:16px;background:var(--card);border:1px solid var(--rule);border-radius:7px;padding:13px 16px;margin:18px 0;max-width:64ch;font-variant-numeric:tabular-nums}
+.eq small{display:block;font-weight:400;color:var(--ink2);font-size:13.5px;margin-top:6px}
+table{border-collapse:collapse;font-family:var(--sans);font-size:14.5px;margin:18px 0;font-variant-numeric:tabular-nums;width:100%;max-width:660px}
+th,td{border-bottom:1px solid var(--rule);padding:7px 14px 7px 0;text-align:left;vertical-align:top}
+th{font-weight:600;font-size:12.5px;color:var(--ink2)}
+.fig{margin:22px 0;max-width:660px}
+.fig figcaption{font-family:var(--sans);font-size:13px;color:var(--ink2);margin-top:8px}
+svg{display:block;width:100%;height:auto}
+
+/* exercises */
+.ex{background:var(--card);border:1px solid var(--rule);border-radius:11px;padding:22px;margin:26px 0 0;max-width:680px}
+.ex-tag{font-family:var(--sans);font-size:12.5px;font-weight:600;color:var(--ink2);margin:0 0 10px;display:flex;gap:8px;align-items:center}
+.ex-tag i{font-style:normal;background:var(--paper);border:1px solid var(--rule);border-radius:4px;padding:1px 6px;font-size:11px;color:var(--ink3)}
+.ex-q{font-family:var(--sans);font-size:16.5px;font-weight:500;line-height:1.45;margin:0 0 16px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{font-size:15.5px;text-align:left;background:var(--paper);border:1px solid var(--rule);border-radius:7px;padding:11px 14px;color:var(--ink);line-height:1.4;transition:border-color .12s,background .12s;font-family:var(--sans)}
+.opt:hover:not(:disabled){border-color:var(--ink3)}
+.opt[data-mark="right"]{border-color:var(--ok);background:rgba(46,122,99,.09);font-weight:600}
+.opt[data-mark="wrong"]{border-color:var(--under);background:rgba(166,49,37,.07)}
+.opt[data-mark="chosen"]{border-color:var(--ink);background:rgba(20,49,44,.06)}
+.opt:disabled{cursor:default}
+.seqrow{display:flex;gap:12px;align-items:flex-start}
+.badge{font-family:var(--sans);font-weight:700;font-size:13px;min-width:20px;height:20px;border-radius:4px;background:var(--rule);color:var(--ink2);display:inline-flex;align-items:center;justify-content:center;flex:none;margin-top:1px}
+.badge.set{background:var(--ink);color:#fff}
+.numrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+input[type=text]{font-size:16px;font-variant-numeric:tabular-nums;padding:9px 11px;width:140px;border:1px solid var(--rule);border-radius:7px;background:var(--paper);color:var(--ink)}
+input[type=text]:focus{outline:2px solid var(--ok);border-color:transparent}
+.unit{font-family:var(--sans);font-size:14px;color:var(--ink2)}
+.btn{font-size:15px;font-weight:600;padding:10px 20px;border-radius:7px;border:1px solid var(--ink);background:var(--ink);color:#fff}
+.btn:hover{background:#0d2520}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--rule);font-weight:500}
+.btn.ghost:hover{border-color:var(--ink3)}
+.btn.sm{padding:7px 13px;font-size:14px}
+.btn:disabled{opacity:.4;cursor:default}
+.feedback{font-family:var(--sans);font-size:15px;line-height:1.5;margin-top:16px;padding-left:14px;border-left:3px solid var(--rule)}
+.feedback[data-tone="right"]{border-color:var(--ok)}
+.feedback[data-tone="wrong"]{border-color:var(--low)}
+.feedback b{display:block;margin-bottom:3px}
+.actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;align-items:center}
+.hintline{font-family:var(--sans);font-size:14px;color:var(--ink2)}
+.foot{display:flex;gap:12px;margin-top:36px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--rule);padding-top:22px}
+
+/* classify */
+.buckets{display:grid;gap:12px;grid-template-columns:1fr}
+@media(min-width:620px){.buckets{grid-template-columns:1fr 1fr}}
+.bucket{border:1px dashed var(--rule);border-radius:9px;padding:12px;min-height:74px;background:var(--paper)}
+.bucket h4{font-family:var(--sans);font-size:13px;margin:0 0 8px;color:var(--ink2)}
+.chip{font-family:var(--sans);font-size:13.5px;border:1px solid var(--rule);background:var(--card);border-radius:999px;padding:5px 11px;margin:0 6px 6px 0;color:var(--ink)}
+.chip[data-mark="right"]{border-color:var(--ok);background:rgba(46,122,99,.1)}
+.chip[data-mark="wrong"]{border-color:var(--under);background:rgba(166,49,37,.08)}
+.pool{margin-bottom:12px}
+
+/* plan table */
+.plantable{font-family:var(--sans);font-size:14.5px;font-variant-numeric:tabular-nums;width:100%;max-width:640px;border-collapse:collapse}
+.plantable th{font-size:12px;text-align:right;padding:6px 8px;border-bottom:1px solid var(--rule);color:var(--ink2)}
+.plantable th:first-child{text-align:left}
+.plantable td{padding:5px 8px;text-align:right;border-bottom:1px solid var(--rule2)}
+.plantable td:first-child{text-align:left;color:var(--ink2);font-size:13.5px}
+.plantable input{width:92px;text-align:right;padding:5px 7px;font-size:14.5px}
+.mos{display:inline-block;padding:2px 9px;border-radius:5px;font-weight:600;font-size:13.5px}
+.mos[data-s="under"]{background:rgba(166,49,37,.13);color:var(--under)}
+.mos[data-s="ok"]{background:rgba(46,122,99,.13);color:var(--ok)}
+.mos[data-s="over"]{background:rgba(60,99,152,.13);color:var(--over)}
+.mos[data-s="out"]{background:var(--out);color:#fff}
+
+/* sandbox */
+.sandbox{background:var(--card);border:1px solid var(--rule);border-radius:11px;padding:20px;margin:24px 0;max-width:680px}
+.sandbox h3{font-family:var(--sans);font-size:16px;margin:0 0 4px}
+.sandbox .sub{font-family:var(--sans);font-size:13.5px;color:var(--ink2);margin:0 0 16px}
+.ctrl{font-family:var(--sans);font-size:14px;margin-bottom:12px}
+.ctrl label{display:flex;gap:10px;align-items:center;justify-content:space-between}
+.ctrl input[type=range]{flex:1;accent-color:var(--ok)}
+.ctrl .val{min-width:62px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.toggles{display:flex;flex-direction:column;gap:7px;margin:14px 0}
+.toggles label{display:flex;gap:9px;align-items:flex-start;font-family:var(--sans);font-size:14px;line-height:1.35}
+.toggles input{margin-top:3px;accent-color:var(--ok)}
+.readout{display:flex;gap:22px;flex-wrap:wrap;font-family:var(--sans);font-size:13.5px;margin-top:14px;border-top:1px solid var(--rule2);padding-top:12px}
+.readout div span{display:block;color:var(--ink3);font-size:11.5px}
+.readout div b{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums}
+
+/* glossary */
+.gsearch{width:100%;max-width:420px;font-size:16px;padding:11px 14px;border:1px solid var(--rule);border-radius:8px;background:var(--card)}
+.gitem{border-bottom:1px solid var(--rule);padding:15px 0;max-width:72ch}
+.gitem h3{font-family:var(--sans);font-size:15.5px;margin:0 0 4px}
+.gitem p{font-size:16px;margin:0;color:var(--ink2)}
+.gcount{font-family:var(--sans);font-size:13px;color:var(--ink3);margin:14px 0 4px}
+
+/* chart labels */
+.mlabel{font-family:var(--sans);font-size:11px;fill:var(--ink3)}
+.mlabel.sel{fill:var(--ink);font-weight:700}
+.axlabel{font-family:var(--sans);font-size:11px;fill:var(--ink3)}
+.bandlabel{font-family:var(--sans);font-size:10.5px;font-weight:600}
+.hitbox{fill:transparent;cursor:pointer}
+
+/* home + results */
+.hero h1{font-size:clamp(34px,6vw,52px);max-width:17ch}
+.facts{list-style:none;padding:0;margin:26px 0 0;font-family:var(--sans);font-size:15px;max-width:62ch}
+.facts li{padding:11px 0;border-top:1px solid var(--rule);display:flex;gap:14px}
+.facts li span:first-child{color:var(--ink3);min-width:92px;flex:none}
+.score{font-family:var(--sans);font-size:64px;font-weight:700;letter-spacing:-.04em;line-height:1;margin:0}
+.score small{font-size:22px;color:var(--ink3);font-weight:500}
+.cards{display:grid;gap:14px;grid-template-columns:1fr;margin:24px 0;max-width:680px}
+@media(min-width:620px){.cards{grid-template-columns:1fr 1fr}}
+.tcard{background:var(--card);border:1px solid var(--rule);border-radius:11px;padding:18px;text-align:left}
+.tcard h3{font-family:var(--sans);font-size:16.5px;margin:0 0 6px}
+.tcard p{font-size:15px;color:var(--ink2);margin:0 0 10px}
+.tcard .pct{font-family:var(--sans);font-size:12.5px;color:var(--ink3)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.draw{stroke-dasharray:1500;stroke-dashoffset:1500;animation:draw 1.5s .2s ease forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+
+/* widgets */
+.months{display:flex;gap:5px;flex-wrap:wrap;margin:14px 0}
+.mcell{font-family:var(--sans);font-size:11.5px;border:1px solid var(--rule);border-radius:6px;padding:6px 7px;min-width:60px;text-align:center;background:var(--paper);color:var(--ink3)}
+.mcell b{display:block;font-size:13.5px;font-weight:700;color:var(--ink3);font-variant-numeric:tabular-nums}
+.mcell[data-in="1"]{border-color:var(--ok);background:rgba(46,122,99,.1)}
+.mcell[data-in="1"] b{color:var(--ink)}
+.mcell[data-null="1"] b{color:var(--under)}
+.mcell[data-now="1"]{box-shadow:0 0 0 2px var(--ink)}
+.mtoggle{cursor:pointer}
+.mcell[data-off="1"]{opacity:.42;text-decoration:line-through}
+.metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:16px}
+.mbox{border:1px solid var(--rule);border-radius:9px;padding:13px;font-family:var(--sans)}
+.mbox h5{margin:0 0 9px;font-size:13.5px;font-weight:700}
+.mbox .row{display:flex;justify-content:space-between;font-size:13.5px;padding:3px 0;font-variant-numeric:tabular-nums}
+.mbox .row span{color:var(--ink3)}
+.mbox[data-win="1"]{border-color:var(--ok);background:rgba(46,122,99,.06)}
+.verdict{font-family:var(--sans);font-size:14px;color:var(--ink2);margin-top:14px;border-top:1px solid var(--rule2);padding-top:12px}
+.linklist{list-style:none;padding:0;margin:18px 0;max-width:64ch}
+.linklist li{border-top:1px solid var(--rule);padding:12px 0}
+.linklist a{font-family:var(--sans);font-weight:600;font-size:15.5px;color:var(--ink);text-decoration:none;border-bottom:1px solid var(--ink3)}
+.linklist a:hover{border-bottom-color:var(--ink)}
+.linklist p{font-size:15.5px;color:var(--ink2);margin:5px 0 0}
+</style>
+
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const {useState, useMemo, useRef, useEffect} = React;
+
+const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const nf = n => Math.round(n).toLocaleString('en-US');
+
+/* ============================ chart builder ============================ */
+function chartSVG(o){
+  const v=o.values, months=o.months||MO;
+  const W=660,H=240,L=36,R=12,T=16,B=30;
+  const pw=W-L-R, ph=H-T-B, top=o.top||Math.max(o.max+3, Math.ceil(Math.max.apply(null,v))+1);
+  const x=i=>L+(pw/(v.length-1))*i;
+  const y=m=>T+ph-(Math.max(0,Math.min(top,m))/top)*ph;
+  const col=m=>m<=0?'var(--out)':(m<o.min?'var(--under)':(m>o.max?'var(--over)':'var(--ok)'));
+  let s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Months of stock by month">';
+  s+='<rect x="'+L+'" y="'+T+'" width="'+pw+'" height="'+(y(o.max)-T)+'" fill="rgba(60,99,152,.07)"/>';
+  s+='<rect x="'+L+'" y="'+y(o.min)+'" width="'+pw+'" height="'+(T+ph-y(o.min))+'" fill="rgba(166,49,37,.07)"/>';
+  [[o.min,'min','var(--under)'],[o.max,'max','var(--over)']].forEach(function(d){
+    s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(d[0])+'" y2="'+y(d[0])+'" stroke="'+d[2]+'" stroke-width="1" stroke-dasharray="4 3"/>';
+    s+='<text class="bandlabel" x="'+(L+4)+'" y="'+(y(d[0])-5)+'" fill="'+d[2]+'">'+d[1]+' '+d[0]+' MOS</text>';
+  });
+  for(let k=0;k<=5;k++){const m=top*k/5;
+    s+='<text class="axlabel" x="'+(L-7)+'" y="'+(y(m)+4)+'" text-anchor="end">'+(Math.round(m*10)/10)+'</text>';}
+  s+='<line x1="'+L+'" x2="'+L+'" y1="'+T+'" y2="'+(T+ph)+'" stroke="var(--rule)"/>';
+  s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+(T+ph)+'" y2="'+(T+ph)+'" stroke="var(--rule)"/>';
+  const path=v.map((m,i)=>(i?'L':'M')+x(i)+','+y(m)).join(' ');
+  if(o.ghost){
+    const gp=o.ghost.map((m,i)=>(i?'L':'M')+x(i)+','+y(m)).join(' ');
+    s+='<path d="'+gp+'" fill="none" stroke="var(--ink3)" stroke-width="1.5" stroke-dasharray="5 4" opacity=".65"/>';
+  }
+  s+='<path d="'+path+'" fill="none" stroke="var(--ink)" stroke-width="2.25" stroke-linejoin="round" class="'+(o.animate?'draw':'')+'"/>';
+  const bw=pw/(v.length-1);
+  v.forEach(function(m,i){
+    const sel=o.selected===i, ans=o.reveal===i;
+    if(o.pickable) s+='<rect x="'+(x(i)-bw/2)+'" y="'+T+'" width="'+bw+'" height="'+ph+'" fill="'+((sel||ans)?'rgba(20,49,44,.08)':'transparent')+'"/>';
+    s+='<circle cx="'+x(i)+'" cy="'+y(m)+'" r="'+((sel||ans)?5.5:3.5)+'" fill="'+(ans?'var(--ok)':(sel?'var(--ink)':col(m)))+'" stroke="var(--card)" stroke-width="1.5"/>';
+    s+='<text class="mlabel '+((sel||ans)?'sel':'')+'" x="'+x(i)+'" y="'+(H-10)+'" text-anchor="middle">'+months[i]+'</text>';
+    if(o.pickable) s+='<rect class="hitbox" data-pick="'+i+'" x="'+(x(i)-bw/2)+'" y="'+T+'" width="'+bw+'" height="'+ph+'"/>';
+  });
+  return s+'</svg>';
+}
+
+/* ============================ QAT calculation engine ============================ */
+// AMC per QAT default: mean of the 3 previous months, the current month, and 2 future
+// months of consumption. Missing months are null (excluded), not zero.
+function amcAt(consumption, i, back, fwd){
+  back = back===undefined?3:back; fwd = fwd===undefined?2:fwd;
+  let sum=0,n=0;
+  for(let k=i-back;k<=i+fwd;k++){
+    if(k<0||k>=consumption.length) continue;
+    const c=consumption[k];
+    if(c===null||c===undefined) continue;
+    sum+=c;n++;
+  }
+  return n? sum/n : null;
+}
+
+// Month-by-month projection. Stock never goes negative; the shortfall is unmet demand.
+function project(opts){
+  const {opening, consumption, shipments, adjustments, min, reorder} = opts;
+  const max = min + reorder;
+  const rows=[]; let bal=opening;
+  for(let i=0;i<consumption.length;i++){
+    const open=bal;
+    const ship=(shipments[i]||0);
+    const adj=(adjustments&&adjustments[i])||0;
+    const demand=consumption[i]||0;
+    let available=open+ship+adj;
+    let consumed=Math.min(demand,Math.max(0,available));
+    let unmet=Math.max(0,demand-Math.max(0,available));
+    bal=Math.max(0,available-consumed);
+    const amc=amcAt(consumption,i);
+    rows.push({month:MO[i%12],open,ship,adj,consumption:demand,consumed,unmet,close:bal,
+      amc, mos: (amc&&amc>0)? bal/amc : null, min, max});
+  }
+  return rows;
+}
+function statusOf(mos,min,max){
+  if(mos===null) return 'na';
+  if(mos<=0) return 'out';
+  if(mos<min) return 'under';
+  if(mos>max) return 'over';
+  return 'ok';
+}
+
+/* ============================ COURSE CONTENT ============================ */
+const FC = [
+{
+ id:'fc1', title:'What QAT is, and how it is organised', minutes:7,
+ body:[
+  {t:'p',cls:'lede',c:'QAT is a cloud-based tool for country-led forecasting and supply planning, built for any health commodity. It replaced Quantimed for forecasting and PipeLine for supply planning, and it is a recognised digital public good.'},
+  {t:'p',c:'The two modules arrived separately. Supply Planning launched in December 2020; Forecasting followed in June 2022. As of May 2026, 45 countries had been trained on QAT, 34 of them on both modules.'},
+  {t:'p',c:'Before any of the arithmetic makes sense, it helps to know how QAT organises data, because nearly every setting you will touch lives at one of these levels.'},
+  {t:'table',head:['Level','What it is'],rows:[
+    ['Realm','A world of shared master data — product catalogue, funder names, procurement agent names. The Global Health Realm is the one in use today.'],
+    ['Program','One country, one or more technical areas, one region, one organisation. A program is the equivalent of a PipeLine supply plan database, or a Quantimed forecast dataset.'],
+    ['Region','Sub-national levels inside a program. If you plan nationally, leave it as national or central.'],
+    ['Version','A saved state of a program. The copy on your machine is the local version; the copy on the server is read-only.']
+  ]},
+  {t:'h',c:'Working offline'},
+  {t:'p',c:'QAT is a progressive web app, so you can work without a connection — but only after downloading the program to your computer while online. Master data syncs when you log in online or when you sync manually. Full forecast and supply plan data is a deliberate download-then-upload cycle, not a background sync.'},
+  {t:'note',b:'Two tabs, one editable',c:'On both the forecasting and supply planning screens you will see your Local version, which is editable, and the Server version, which is the latest upload and is view-only. Edits always happen locally and are uploaded as a new version.'},
+  {t:'p',c:'If something is wrong with master data — a missing product, a funder that should exist, a user role — that is a ticket to a realm or application administrator, not something you fix inside your own program.'}
+ ],
+ exercises:[
+  {type:'mcq', tag:'Recall',
+   q:'Which combination defines a QAT program?',
+   options:['One product, one funder, one year','One country, one or more technical areas, one region, one organisation','One realm and one procurement agent','One forecast and one supply plan'],
+   answer:1,
+   explain:'A program is scoped by country, technical area(s), region and organisation — usually the MOH at national level. It is the direct equivalent of a PipeLine supply plan database.'},
+  {type:'classify', tag:'Sort',
+   q:'Sort each item into where it is controlled.',
+   buckets:[{id:'master',label:'Master data — raise a ticket'},{id:'prog',label:'Program settings — you or your admin'}],
+   items:[
+    {text:'Product catalogue',bucket:'master'},
+    {text:'Procurement agent names',bucket:'master'},
+    {text:'Minimum stock level',bucket:'prog'},
+    {text:'Reorder interval',bucket:'prog'},
+    {text:'Funder names',bucket:'master'},
+    {text:'AMC calculation window',bucket:'prog'}
+   ],
+   explain:'Master data is shared across everyone in the realm, so changes go through a ticket. Planning parameters belong to your program and are set by the program administrator.'}
+ ]
+},
+{
+ id:'fc2', title:'Units: forecasting, planning, reporting, equivalency', minutes:7,
+ body:[
+  {t:'p',cls:'lede',c:'QAT keeps four different units for the same product. Mixing them up is one of the most common sources of a quantification that comes out wildly wrong, and it matters from the first forecast onward.'},
+  {t:'table',head:['Unit','What it is'],rows:[
+   ['Forecasting unit (FU)','The smallest unit used when forecasting demand — tablets, tests, vials. Always smaller than or equal to the planning unit.'],
+   ['Planning unit (PU)','The unit you plan and order in — a bottle of 30 tablets, a 10x10 blister pack.'],
+   ['Alternate reporting unit (ARU)','The unit your country actually reports consumption or stock in, with a conversion multiplier to the planning unit.'],
+   ['Equivalency unit (EU)','A standardised unit that lets different strengths or pack sizes be compared and aggregated — malaria treatments, ARV patient-months, couple-years of protection.']
+  ]},
+  {t:'p',c:'Forecasts are built in forecasting units because that is the level a clinical assumption lives at: a patient takes tablets, not cartons. The conversion to planning units happens on the way into the supply plan.'},
+  {t:'h',c:'How the ARU conversion works'},
+  {t:'p',c:'Say the planning unit is a bottle of 30 tablets, but the warehouse reports in boxes of 20 bottles. The multiplier is 20. A reported inventory of 100 boxes becomes 2,000 bottles in the plan. On the supply planning screen you can switch the whole table and graph to the ARU view, and every value converts.'},
+  {t:'note',b:'Why EUs matter',c:'You cannot aggregate two different pack sizes directly. Equivalency units are what let a report show one national curve across products that are not the same SKU. ARUs cannot be used together with EUs.'}
+ ],
+ exercises:[
+  {type:'num', tag:'Calculate',
+   q:'The planning unit is a bottle of 30 tablets. Stock is reported in boxes of 20 bottles, and the warehouse reports 340 boxes. How many planning units is that?',
+   answer:6800, tol:0, unit:'bottles',
+   hint:'Multiply the reported quantity by the conversion factor.',
+   explain:'340 boxes x 20 bottles = 6,800 planning units. Enter data in whichever unit your staff actually count in and let QAT convert — re-keying conversions by hand is where errors creep in.'},
+  {type:'mcq', tag:'Recall',
+   q:'Which statement is always true?',
+   options:['The forecasting unit is larger than the planning unit','The planning unit is smaller than or equal to the forecasting unit','The forecasting unit is smaller than or equal to the planning unit','The alternate reporting unit equals the planning unit'],
+   answer:2,
+   explain:'FU is always the smallest — you forecast in tablets and plan in packs, never the other way round.'}
+ ]
+},
+{
+ id:'fc3', title:'Two routes to a forecast', minutes:8,
+ body:[
+  {t:'p',cls:'lede',c:'The forecasting module answers how much will be needed. QAT offers two routes to that answer, and a planning unit can use either — or both, so you can compare them.'},
+  {t:'table',head:['Approach','When it fits'],rows:[
+   ['Consumption-based forecast','There is usable historical consumption. QAT extrapolates it forward using linear and non-linear methods.'],
+   ['Tree forecast','There is no reliable consumption history, or demand is driven by something else — demographics, morbidity, service statistics. A tree converts those inputs into commodity quantities.']
+  ]},
+  {t:'h',c:'Trees, templates and usage'},
+  {t:'p',c:'A forecasting tree is a flexible structure that turns a population or service number into products. Tree templates are pre-built structures you download and adapt to your context; usage templates are pre-defined rates of use for specific products that can be reused across trees and programs. Both exist so that forty countries are not each inventing the same ARV regimen branch from scratch.'},
+  {t:'p',c:'When you set a usage rate you choose whether the product is used continuously — unending, like a daily ARV — or discretely. A discrete product needs a period of use, unless it is single use, in which case no period applies.'},
+  {t:'h',c:'Building more than one'},
+  {t:'p',c:'The point of the module is comparison. Build a consumption-based version and a tree-based version of the same product, put them side by side, and the gap between them is the conversation: either your service data disagrees with what is actually being issued, or your consumption history is distorted. Either way you have learned something before committing to a number.'},
+  {t:'note',b:'A forecast is a position, not a fact',c:'Record the assumptions behind a tree — coverage rates, adherence, seasonality — where the next planner can find them. A quantification that cannot explain itself six months later has to be redone from scratch.'}
+ ],
+ exercises:[
+  {type:'mcq', tag:'Judgement',
+   q:'A country is introducing a product that has never been issued before. Which approach fits?',
+   options:['Consumption-based forecast using a short window','A tree forecast built from morbidity or service data','Copy the previous product\u2019s consumption','Wait for six months of actuals'],
+   answer:1,
+   explain:'With no consumption history there is nothing to extrapolate. A tree converts the underlying driver — cases, patients, services — into commodity quantities.'},
+  {type:'mcq', tag:'Recall',
+   q:'A product is used for a fixed 14-day course. How is it defined on the tree?',
+   options:['Continuous use','Discrete use with a period specified','Discrete use, single use','Continuous use with a multiplier'],
+   answer:1,
+   explain:'Discrete use with the period of use specified. Single use is the special case where no period is needed.'},
+  {type:'mcq', tag:'Judgement',
+   q:'Your tree forecast is 40% higher than your consumption-based forecast for the same product. What is the right first move?',
+   options:['Average the two','Take the tree forecast, since it reflects need rather than supply','Take the consumption forecast, since it reflects reality','Work out which assumption drives the gap before choosing either'],
+   answer:3,
+   explain:'The gap is the finding. It usually means either the service data overstates coverage, or consumption was suppressed by stockouts. Averaging buries the question; picking one without asking it just guesses.'}
+ ]
+},
+{
+ id:'fc4', title:'Extrapolation methods', minutes:8,
+ body:[
+  {t:'p',cls:'lede',c:'When you do have consumption history, QAT can project it forward several ways. Having several is the point — you run them to compare, not to find the one true method.'},
+  {t:'table',head:['Method','What it captures'],rows:[
+   ['Linear extrapolation','A straight trend. Simple and transparent; badly wrong if demand is seasonal.'],
+   ['Non-linear extrapolation','Curved growth or decline in the history.'],
+   ['ARIMA','Auto-regressive integrated moving average — a time-series method that fits trends and patterns in the history.'],
+   ['Triple exponential smoothing (Holt-Winters)','Level, trend and seasonality together. The one to reach for when demand has a repeating annual shape.']
+  ]},
+  {t:'h',c:'Choosing between them'},
+  {t:'p',c:'Run more than one, look at the shapes against the actuals, and check the error metrics. A method that fits the history beautifully but produces an implausible forward curve is not the winner — plot it out and sanity-check the far end. Two years of history flattered by a clever fit will still send you a year of stock you cannot use.'},
+  {t:'note',b:'Watch the history you feed it',c:'Extrapolation takes whatever pattern is in the data. Stockout periods, campaign spikes and a guideline change all read as signal. Clean or flag them first, or every method will faithfully project a distortion.'}
+ ],
+ exercises:[
+  {type:'classify', tag:'Match',
+   q:'Match each demand pattern to the method built for it.',
+   buckets:[{id:'lin',label:'Linear extrapolation'},{id:'tes',label:'Triple exponential smoothing'}],
+   items:[
+    {text:'Steady growth, no seasonality',bucket:'lin'},
+    {text:'Peaks every year in the same three months',bucket:'tes'},
+    {text:'Flat demand with a slow upward drift',bucket:'lin'},
+    {text:'Rainy-season malaria caseload',bucket:'tes'}
+   ],
+   explain:'Holt-Winters models level, trend and seasonality together, which is exactly the shape of a transmission-season commodity. Linear is the honest choice when there is a trend and nothing else.'},
+  {type:'mcq', tag:'Judgement',
+   q:'A method fits the last three years almost perfectly but projects consumption doubling within twelve months. What should you do?',
+   options:['Use it — the fit statistics are the evidence','Check the forward curve against what is clinically plausible before using it','Switch to linear automatically','Extend the history until the fit worsens'],
+   answer:1,
+   explain:'Fit measures how well a method explains the past. It says nothing about whether the projection is sensible. An implausible forward curve is a reason to reject a method regardless of its error metrics.'}
+ ]
+},
+{
+ id:'fc5', title:'Measuring forecast error', minutes:9,
+ body:[
+  {t:'p',cls:'lede',c:'Comparing forecast versions needs a number, and QAT reports several. They disagree on purpose, and the disagreement is informative.'},
+  {t:'table',head:['Metric','What it measures'],rows:[
+   ['MAPE','Mean absolute percentage error — the average of each period\u2019s percentage error, every period weighted equally.'],
+   ['WAPE','Weighted absolute percentage error — total absolute error as a percentage of total actual demand, so high-volume periods dominate.'],
+   ['RMSE','Root mean squared error — in units, and punishes large misses far more than small ones.'],
+   ['MSE','Mean squared error — the same idea before taking the square root.']
+  ]},
+  {t:'h',c:'Why MAPE and WAPE differ'},
+  {t:'p',c:'MAPE treats a month with 50 units the same as a month with 50,000. A 40% miss on a tiny month can drag the headline number badly even though the absolute error is trivial. WAPE weights by volume, so it tells you how much product you got wrong rather than how often you were off.'},
+  {t:'p',c:'Try it below. The two forecast versions are close on some metrics and not others, and clicking a month out — the way you would exclude a stockout period — moves them by different amounts.'},
+  {t:'widget',kind:'error'},
+  {t:'note',b:'Use both',c:'If MAPE is poor and WAPE is fine, your errors are concentrated in low-volume periods. If WAPE is poor, the misses are where the money is.'}
+ ],
+ exercises:[
+  {type:'num', tag:'Calculate',
+   q:'Three months. Actuals: 1,000 / 2,000 / 500. Forecasts: 1,100 / 1,800 / 600. What is the MAPE, as a percentage?',
+   answer:13.33, tol:0.4, unit:'%',
+   hint:'Percentage error for each month, then the plain average of the three.',
+   explain:'Errors are 10%, 10% and 20%, so MAPE = 13.3%. Each month counts equally regardless of its size.'},
+  {type:'num', tag:'Calculate',
+   q:'Same three months. What is the WAPE, as a percentage?',
+   answer:11.43, tol:0.4, unit:'%',
+   hint:'Total absolute error divided by total actual demand.',
+   explain:'Absolute errors total 400 against actual demand of 3,500, so WAPE = 11.4%. It is lower than MAPE because the worst percentage miss was on the smallest month — exactly the distinction the two metrics exist to expose.'},
+  {type:'mcq', tag:'Apply',
+   q:'Version A has the lower MAPE; version B has the lower WAPE. You are sizing a year of procurement. Which is the more relevant number?',
+   options:['MAPE, because it is the standard metric','WAPE, because it weights the months where the volume is','Whichever is lower','Neither — use RMSE'],
+   answer:1,
+   explain:'Procurement value tracks volume. A version that is reliably right on the big months and scruffy on the small ones will cost you less than one with the reverse profile, even though MAPE prefers the second.'}
+ ]
+},
+{
+ id:'fc6', title:'From forecast into the supply plan', minutes:7,
+ body:[
+  {t:'p',cls:'lede',c:'A forecast is only useful once it is sitting under a supply plan. The handover is where unit conversion and version discipline matter.'},
+  {t:'list',items:[
+   'Build and compare forecast versions in the forecasting module; pick one.',
+   'Quantities convert from forecasting units to planning units on the way through.',
+   'The chosen forecast becomes the forecast consumption line in the supply plan — the purple italic figures.',
+   'Actual consumption, once entered, displaces the forecast for that month.'
+  ]},
+  {t:'h',c:'Keeping versions straight'},
+  {t:'p',c:'Both modules version the same way: download a program, work locally, upload when you are done, which creates a new version on the server. Anyone else sees the server version until you upload. Agreeing who holds the pen during a quantification workshop saves a great deal of reconciliation afterwards.'},
+  {t:'note',b:'The QAT problem list',c:'QPL flags data issues, inconsistencies and warnings that would affect a forecast or a plan. Clear it before you present anything.'},
+  {t:'p',c:'From here the second track picks up the story: what the supply planning module does with the forecast you just handed it.'}
+ ],
+ exercises:[
+  {type:'mcq', tag:'Recall',
+   q:'You entered actual consumption for March, and the forecast for March was different. What shows on the supply planning screen?',
+   options:['The forecast, in purple italics','The actual, in plain black','Both, in separate rows','Whichever is higher'],
+   answer:1,
+   explain:'For a single-region program the actual displaces the forecast once it exists. The greater-of rule applies only to multi-region programs aggregating across regions.'},
+  {type:'seq', tag:'Sequence',
+   q:'Put the workflow in order.',
+   items:['Upload as a new version','Download the program while online','Build and compare forecast versions','Work locally on the supply plan'],
+   order:[1,2,3,0],
+   explain:'Download, forecast, plan, upload. QAT works offline by design, but only against a program you pulled down first.'}
+ ]
+}
+];
+
+const SP = [
+{
+ id:'sp1', title:'The four inputs and the ending balance', minutes:8,
+ body:[
+  {t:'p',cls:'lede',c:'Everything on the supply planning screen comes from four kinds of record: consumption, shipments, inventory, and adjustments. QAT walks these forward one month at a time.'},
+  {t:'eq',c:'Ending balance = opening balance + shipments received − consumption ± adjustments − expiries',
+   note:'Opening balance is the previous month\u2019s ending balance. In the very first month of a program it is zero.'},
+  {t:'p',c:'The screen shows the past 3 months and 15 future months by default, and you can scroll further in either direction. Values shown in bold are real counts; unbolded values are projections. Forecast consumption appears in purple italics, actual consumption in plain black.'},
+  {t:'h',c:'Which consumption number shows'},
+  {t:'p',c:'Only one consumption figure appears per month. For a single-region program, QAT shows actual consumption when it exists and falls back to the forecast when it does not. For a multi-region program it shows whichever is greater, the sum of actuals or the sum of forecasts across regions.'},
+  {t:'h',c:'Unmet demand'},
+  {t:'p',c:'QAT never lets stock go negative. Where demand exceeds what was available, the shortfall is moved to a separate unmet demand row. That row is the thing PipeLine used to show as a negative balance, and it appears in three situations:'},
+  {t:'list',items:[
+   'Forecast consumption exceeds the projected opening stock for the month.',
+   'Actual consumption covers a period that included days of stockout.',
+   'A negative manual adjustment is larger than the projected ending balance.'
+  ]},
+  {t:'note',b:'Read the unmet demand row first',c:'A tidy-looking plan with a populated unmet demand row is not a healthy plan. It means demand was clipped to fit the stock that existed.'}
+ ],
+ exercises:[
+  {type:'plan', tag:'Work it through',
+   q:'Fill in the ending balance for each month. Opening stock in January is 30,000 packs. There are no adjustments and no expiries.',
+   opening:30000,
+   rows:[{m:'Jan',ship:0,cons:9500},{m:'Feb',ship:20000,cons:10200},{m:'Mar',ship:0,cons:9800}],
+   explain:'January: 30,000 − 9,500 = 20,500. February: 20,500 + 20,000 − 10,200 = 30,300. March: 30,300 − 9,800 = 20,500. Each month\u2019s ending balance is the next month\u2019s opening balance, which is why one bad figure propagates through the rest of the horizon.'},
+  {type:'mcq', tag:'Apply',
+   q:'A district reported 4,000 packs consumed in a month when it was stocked out for eleven days. How does QAT treat the gap?',
+   options:['It raises the consumption figure to the forecast','It records the shortfall in the unmet demand row','It shows a negative ending balance','It ignores the month entirely'],
+   answer:1,
+   explain:'Unmet demand estimates what would have been consumed had stock been available, and keeps it out of the ending balance so the balance never goes negative.'}
+ ]
+},
+{
+ id:'sp2', title:'AMC and months of stock', minutes:10,
+ body:[
+  {t:'p',cls:'lede',c:'Average monthly consumption is the denominator under almost everything else, and QAT calculates it differently from how most planners expect.'},
+  {t:'eq',c:'Default AMC = mean of the 3 previous months, the current month, and 2 future months',
+   note:'Six months in total, and it looks forward as well as back. Program administrators can widen the window to a maximum of 12 months in either direction.'},
+  {t:'p',c:'Looking forward matters. Because future months are forecast rather than actual, a change in the forecast moves the AMC, which moves months of stock, which moves the stock status colour — before any real consumption has happened. That is intentional: it makes the plan respond to a coming change in demand rather than lagging it.'},
+  {t:'note',b:'Missing is not zero',c:'If a month inside the AMC window has no consumption data, QAT treats it as null and drops it from the average. It does not count it as zero. A zero would drag the AMC down and quietly shrink every order built on it.'},
+  {t:'p',c:'Widen the window below and watch what happens when it reaches the month with no data.'},
+  {t:'widget',kind:'amc'},
+  {t:'eq',c:'Months of stock = ending balance ÷ AMC',
+   note:'Recalculated for every month of the horizon, not once for the plan.'},
+  {t:'p',c:'MOS is what makes forty products comparable on one screen. It is also what makes min and max portable: set them once in months and they apply to a product moving 300 units a month and one moving 300,000.'},
+  {t:'chart',values:[9.0,8.2,7.4,6.6,5.8,5.0,4.2,3.4,2.6,1.8,1.0,0.2],min:3,max:5,
+   cap:'One planning unit over a year with no shipment arriving. Blue is above max, green is in band, red is below min.'}
+ ],
+ exercises:[
+  {type:'num', tag:'Calculate',
+   q:'Consumption for the AMC window reads: 4,200 / no data / 4,500 / 4,400 / 4,300 / 4,600. Using QAT\u2019s treatment of missing months, what is the AMC?',
+   answer:4400, tol:1, unit:'packs / month',
+   hint:'The month with no data is null, not zero. Divide by the number of months that actually have data.',
+   explain:'The five months with data total 22,000, so the AMC is 4,400. Had the blank been treated as zero, the average would have dropped to 3,667 — about 17% lower, and every order sized from it would have been short.'},
+  {type:'num', tag:'Calculate',
+   q:'The ending balance for the month is 22,000 packs and the AMC is 4,400. What is the months of stock?',
+   answer:5, tol:0.05, unit:'months',
+   explain:'22,000 ÷ 4,400 = 5.0 months. Note that it is the ending balance, not a mid-month snapshot, that QAT divides.'},
+  {type:'mcq', tag:'Apply',
+   q:'A planner raises the forecast for the next two months. Nothing else changes. What happens to this month\u2019s months of stock?',
+   options:['Nothing, because the forecast is in the future','It falls, because the AMC window includes two future months','It rises, because higher demand means more stock is ordered','It is only recalculated after the month closes'],
+   answer:1,
+   explain:'The default window reaches two months forward, so a higher forecast lifts the AMC, and a higher AMC divided into the same balance gives fewer months of stock. The plan reacts before the demand arrives.'}
+ ]
+},
+{
+ id:'sp3', title:'Min, max, and the two planning methods', minutes:9,
+ body:[
+  {t:'p',cls:'lede',c:'Minimum and maximum levels are the guardrails of the plan. The minimum is set per planning unit at the program level; the maximum is calculated, not typed.'},
+  {t:'eq',c:'Max MOS = min MOS + reorder interval',
+   note:'The reorder interval is the number of months between shipments, and defaults to 1.'},
+  {t:'h',c:'Plan by MOS, or plan by quantity'},
+  {t:'p',c:'Not every product should be planned in months. QAT offers two methods, chosen per planning unit.'},
+  {t:'table',head:['','Plan by MOS','Plan by quantity'],rows:[
+   ['Suits','High-volume products, minimal expiry, shipments mostly replacing consumption','Low-volume, high-expiry products held for emergencies'],
+   ['Examples','Most ACTs, ARVs, contraceptives','Calcium gluconate for pre-eclampsia, anti-venom, severe malaria treatment in an elimination setting'],
+   ['Minimum','Set in months of stock','Set as a quantity — e.g. 2 units per facility x 2,000 facilities'],
+   ['Maximum','Min MOS + reorder interval','Min quantity + (reorder interval x AMC)'],
+   ['Colour-coded row','Months of stock','Ending balance']
+  ]},
+  {t:'note',b:'Why the distinction exists',c:'For an emergency product you might hold twelve months of stock and expect to throw most of it away. Months of stock would scream overstock every month and the colour would carry no information. A flat quantity floor is the honest target.'},
+  {t:'h',c:'Lead time'},
+  {t:'p',c:'QAT maps lead times to the shipment lifecycle rather than treating them as one number. There are six segments: planned to submitted, submitted to approved, approved to shipped, shipped to arrived by sea, shipped to arrived by air, and arrived to received. They are set per product, procurement agent, or program by the administrator.'}
+ ],
+ exercises:[
+  {type:'num', tag:'Calculate',
+   q:'A product is planned by quantity. The minimum is 4,000 units, the reorder interval is 2 months, and the AMC is 1,500 units per month. What is the maximum quantity?',
+   answer:7000, tol:0, unit:'units',
+   hint:'Min quantity + reorder interval x AMC.',
+   explain:'4,000 + (2 x 1,500) = 7,000 units. Note the maximum moves whenever the AMC moves, even though the minimum is a fixed number.'},
+  {type:'mcq', tag:'Judgement',
+   q:'A country stocks anti-venom: low consumption, held at every district for emergencies, with most of it expiring unused. Which method fits?',
+   options:['Plan by MOS, with a high minimum','Plan by quantity','Plan by MOS, with the reorder interval set to 12','Neither — exclude it from the supply plan'],
+   answer:1,
+   explain:'This is the textbook plan-by-quantity case: high stock relative to consumption, high expiry, and shipments replacing expired product rather than consumed product. A quantity floor per facility is the meaningful target.'},
+  {type:'seq', tag:'Sequence',
+   q:'Put QAT\u2019s lead time segments in the order a shipment passes through them.',
+   items:['Approved to shipped','Planned to submitted','Arrived to received','Submitted to approved','Shipped to arrived'],
+   order:[1,3,0,4,2],
+   explain:'Planned to submitted, submitted to approved, approved to shipped, shipped to arrived at port, arrived to received at destination. Splitting lead time this way is what lets QAT tell you a shipment cannot physically land when its date claims it will.'}
+ ]
+},
+{
+ id:'sp4', title:'Shipments and their nine statuses', minutes:9,
+ body:[
+  {t:'p',cls:'lede',c:'A shipment in QAT is any planned or actual delivery of product into the supply chain. It appears on the plan by the date it is expected to be received — not the date it was ordered, shipped, or approved.'},
+  {t:'p',c:'By default the shipments row shows one aggregate number per month, excluding suggested shipments. Expand it and you see the breakdown by status.'},
+  {t:'table',head:['Status','Meaning','In projections?'],rows:[
+   ['Suggested','Generated by QAT as an early warning that stock will fall below minimum','No'],
+   ['Planned','Manually entered, or a suggested shipment you accepted. Needs a procurement agent and funding source, which may be TBD','Yes'],
+   ['Submitted','Entered in a procurement system with an order number','Yes'],
+   ['Approved','Approved by the procurement agent or funder','Yes'],
+   ['Shipped','Left the supplier','Yes'],
+   ['Arrived','At port of entry, in customs clearance','Yes'],
+   ['Received','At destination and ready to distribute','Yes'],
+   ['On hold','In the procurement system, awaiting a decision','Yes'],
+   ['Cancelled','Placed, then cancelled','No']
+  ]},
+  {t:'note',b:'The two that catch people out',c:'On-hold shipments still count toward your projected balances, even though nobody has committed to them moving. Cancelled ones drop out. If a plan looks healthier than you expect, expand the shipments row and check what is sitting on hold.'},
+  {t:'h',c:'Reading the cells'},
+  {t:'p',c:'Cell colour indicates the procurement agent, and a month with several agents shows green. A red triangle in the top right marks an emergency order. An L in the bottom left marks a local procurement. A link icon in the top left marks a shipment linked to an ERP — those fields come from the procurement agent\u2019s system and cannot be edited in QAT.'}
+ ],
+ exercises:[
+  {type:'classify', tag:'Sort',
+   q:'Which of these shipment statuses count toward projected stock balances?',
+   buckets:[{id:'in',label:'Counts toward projections'},{id:'out',label:'Does not count'}],
+   items:[
+    {text:'Suggested',bucket:'out'},
+    {text:'On hold',bucket:'in'},
+    {text:'Planned',bucket:'in'},
+    {text:'Cancelled',bucket:'out'},
+    {text:'Arrived',bucket:'in'},
+    {text:'Submitted',bucket:'in'}
+   ],
+   explain:'Only suggested and cancelled shipments sit outside the projection. Everything else, including on hold, is counted — which is why a stalled on-hold order can mask a coming stockout.'},
+  {type:'mcq', tag:'Apply',
+   q:'An order was confirmed in January, ships in March, reaches port in April and clears customs in May. Which month should the shipment sit in?',
+   options:['January','March','April','May'],
+   answer:3,
+   explain:'Shipments appear by expected receive date — when the stock is at destination and ready to distribute. Dating it any earlier makes the pipeline look healthy months before anything can be issued.'},
+  {type:'mcq', tag:'Recall',
+   q:'A shipment cell shows a link icon in the top left. What does that tell you?',
+   options:['It is an emergency order','It is a local procurement','It is linked to an ERP and its fields are not editable in QAT','It has multiple procurement agents'],
+   answer:2,
+   explain:'ERP-linked shipments are fed from the procurement agent\u2019s system — ARTMIS, for instance — which auto-updates delivery dates and statuses. You change those upstream, not in QAT.'}
+ ]
+},
+{
+ id:'sp5', title:'Suggested shipments, batches and expiry', minutes:10,
+ body:[
+  {t:'p',cls:'lede',c:'QAT will propose shipments on its own. Knowing the rule it follows tells you when to trust the suggestion and when the underlying data is the real problem.'},
+  {t:'h',c:'The rule, for products planned by MOS'},
+  {t:'list',items:[
+   'If the planning unit is below minimum for three straight months, QAT suggests a shipment that brings the current month up to maximum.',
+   'If the planning unit is stocked out, QAT always suggests a shipment. If both of the next two months are also below minimum, it brings the month to maximum; if either is above minimum, it brings the month only to minimum.',
+   'If the AMC is zero or missing, no shipment is suggested at all.'
+  ]},
+  {t:'p',c:'The suggested quantity is placed in month N minus X, where X is the distribution lead time — so the order appears in the month you would have to act, not the month the problem shows up. If that month falls inside the lead time, QAT marks the suggestion as an emergency.'},
+  {t:'note',b:'Recalculate',c:'For a planned shipment already sitting in a future month that is below min, followed by at least two more months below min, right-clicking the order quantity gives you a Recalculate option. It applies the same logic and proposes a revised quantity, which you can still type over.'},
+  {t:'h',c:'Batches and expiry'},
+  {t:'p',c:'QAT creates one batch per shipment, sized to that shipment. The expiry date is the receive date plus the planning unit\u2019s shelf life. You can rename a batch, change its expiry, or split a shipment into several batches.'},
+  {t:'table',head:['Event','Default batch logic'],rows:[
+   ['Consumption','First expiry, first out — the batch expiring soonest is drawn down first. You can override and tag a specific batch.'],
+   ['Positive adjustment','Best case: added to the batch with the longest shelf life.'],
+   ['Negative adjustment','Best case: taken from the batch expiring soonest.'],
+   ['Auto adjustment','Best case, and you cannot override it.']
+  ]},
+  {t:'note',b:'Editing batch quantities is a last resort',c:'If the ending balance looks wrong, the fix is almost always upstream — a shipment, a consumption record, an adjustment. Redistributing batch quantities by hand papers over the real error, and the batch totals still have to reconcile to the month\u2019s inventory total.'}
+ ],
+ exercises:[
+  {type:'mcq', tag:'Apply the rule',
+   q:'A planning unit is stocked out in August. September is below minimum but October is above it. What does QAT suggest?',
+   options:['No shipment, because only one of the next two months is below min','A shipment bringing August up to maximum','A shipment bringing August up to minimum','A shipment bringing October up to maximum'],
+   answer:2,
+   explain:'A stockout always triggers a suggestion. Because only one of the following two months is below minimum, QAT is conservative and tops up to minimum rather than maximum.'},
+  {type:'mcq', tag:'Apply the rule',
+   q:'A product shows no consumption data at all for the months in its AMC window, so the AMC is null. Stock is projected to run out. What does QAT suggest?',
+   options:['A shipment to maximum','A shipment to minimum','Nothing — no suggestion is generated','An emergency shipment'],
+   answer:2,
+   explain:'With AMC zero or not available, QAT cannot size a suggestion and produces none. The fix is the missing consumption data, not the shipment.'},
+  {type:'mcq', tag:'Recall',
+   q:'A negative manual adjustment is entered. Which batch does QAT take it from by default?',
+   options:['The batch received most recently','The batch with the longest shelf life','The batch expiring soonest','It is spread evenly across all batches'],
+   answer:2,
+   explain:'Best-case logic: negatives come off the batch closest to expiring, which is the outcome least likely to waste stock. Positives go to the batch with the longest shelf life.'}
+ ]
+},
+{
+ id:'sp6', title:'Scenario planning and the supply plan report', minutes:10,
+ body:[
+  {t:'p',cls:'lede',c:'Scenario planning lets you change one assumption and see what it does to the projection, without touching your current plan until you choose to.'},
+  {t:'p',c:'QAT ships with a set of predefined scenarios. You can stack more than one, view the result, then either apply them — which creates a new version — or cancel out.'},
+  {t:'table',head:['Scenario','What it does'],rows:[
+   ['Increase forecast consumption','Applies a percentage increase across a chosen period'],
+   ['Decrease forecast consumption','Applies a percentage decrease across a chosen period'],
+   ['Phase a product in or out','Interpolates a straight line between a start and end value, replacing the forecast'],
+   ['Remove unfunded shipments','Drops every shipment whose funding source is still TBD'],
+   ['Remove planned shipments','Drops all planned shipments, optionally only those that break the lead times'],
+   ['Remove submitted shipments outside lead time','Drops submitted shipments whose dates are not physically achievable'],
+   ['Remove on-hold shipments outside lead time','Same treatment for on-hold orders'],
+   ['Re-plan','Removes planned shipments that are not holding stock between min and max, and generates new ones using the suggested-shipment logic']
+  ]},
+  {t:'widget',kind:'scenario'},
+  {t:'h',c:'The supply plan report'},
+  {t:'p',c:'The report is the version you show other people. It has three views: a single program with shipments split by status; multiple programs sharing the same planning unit, with shipments split by program; and an equivalency unit view that aggregates across different pack sizes and strengths. For the multi-program view QAT adds a consensus consumption row — the sum of actuals where available, forecasts where not.'},
+  {t:'note',b:'Before the meeting, not after',c:'"Here is what happens if that Q3 delivery slips two months" is a far better argument with a curve attached. That is what the scenarios are for.'}
+ ],
+ exercises:[
+  {type:'mcq', tag:'Judgement',
+   q:'Half your future shipments still have a funding source of TBD, and the plan looks comfortable. Which scenario is the honest stress test?',
+   options:['Increase forecast consumption by 20%','Remove unfunded shipments','Re-plan the supply plan','Phase the product out'],
+   answer:1,
+   explain:'Removing shipments with funding source TBD shows you the plan you can actually count on. If it looks fine without them, you have slack; if it collapses, funding is your real risk, not demand.'},
+  {type:'mcq', tag:'Recall',
+   q:'You want one national curve across three different pack sizes of the same product. What do you need?',
+   options:['An alternate reporting unit','An equivalency unit','A multi-region program','A new realm'],
+   answer:1,
+   explain:'Equivalency units and their conversion factors are what make different planning units aggregable. ARUs cannot be combined with EUs.'}
+ ]
+}
+];
+
+const PROD = [
+{
+ id:'pd1', title:'QAT is open source — where the code lives', minutes:7,
+ body:[
+  {t:'p',cls:'lede',c:'QAT is a digital public good, released under Apache 2.0, and the whole thing is on GitHub under the FASP-QAT organisation. That matters for a supply chain tool: a country adopting it is not betting on a vendor staying in business.'},
+  {t:'table',head:['Repository','What it is'],rows:[
+   ['fasp-api','The backend, in Java. The business logic — projections, AMC, suggested shipments — lives here.'],
+   ['fasp-core-ui','The frontend, in JavaScript. The screens you actually click.'],
+   ['qat-documentation','The user manual and developer docs, built with Docusaurus and published to GitHub Pages.'],
+   ['ConvertPipelineToJson','A command-line tool that converts a PipeLine Access database into JSON — the migration path off the legacy tool.'],
+   ['globalTables','Shared master data structures.'],
+   ['altiusUtilsMaven','Shared Java utilities.']
+  ]},
+  {t:'h',c:'Branch conventions'},
+  {t:'p',c:'Worth knowing if you ever pull the code. Everything up to the point of going open source was released on the master2 branch, which is where the latest release sits. Work in progress is on devMod2. Production releases are tagged as master.major.minor.'},
+  {t:'h',c:'What this is useful for'},
+  {t:'p',c:'Most planners will never open the repository, and that is fine. But three things follow from it being open. You can read the actual projection logic rather than inferring it from screens. You can raise a bug as a public issue. And the documentation is version-controlled, so when the manual says something different from last year you can see exactly what changed and when.'},
+  {t:'links',items:[
+   {u:'https://github.com/FASP-QAT',n:'FASP-QAT on GitHub',d:'The organisation: six repositories covering the API, the UI, the docs and the PipeLine migration tool.'},
+   {u:'https://fasp-qat.github.io/qat-documentation/',n:'QAT documentation',d:'The user manual, admin manual, business rules and glossary. Available in English, French, Spanish and Portuguese.'},
+   {u:'https://fasp-qat.github.io/qat-documentation/docs/user/acronyms',n:'Acronyms and terms',d:'The authoritative glossary. Worth a bookmark — most disagreements in a quantification workshop are definitional.'},
+   {u:'https://www.ghsupplychain.org/quantificationanalyticstool',n:'GHSC-PSM programme page',d:'Background on the FASP team, country adoption and what QAT was built to replace.'}
+  ]}
+ ],
+ exercises:[
+  {type:'classify', tag:'Sort',
+   q:'Which repository would you look in?',
+   buckets:[{id:'api',label:'fasp-api (backend)'},{id:'ui',label:'fasp-core-ui (frontend)'}],
+   items:[
+    {text:'How AMC is actually computed',bucket:'api'},
+    {text:'The layout of the supply planning table',bucket:'ui'},
+    {text:'Suggested shipment rules',bucket:'api'},
+    {text:'The colour legend on screen',bucket:'ui'}
+   ],
+   explain:'Calculation logic sits in the Java backend; presentation sits in the JavaScript frontend. If a number looks wrong, the answer is in fasp-api; if it looks wrong on screen but right in the export, it is the UI.'},
+  {type:'mcq', tag:'Recall',
+   q:'Under what licence is QAT released?',
+   options:['Proprietary, licensed per country','Apache 2.0','Creative Commons non-commercial','GPL v3'],
+   answer:1,
+   explain:'Apache 2.0, and QAT is registered as a digital public good — which is part of why ministries can adopt it without a procurement dependency on any one supplier.'}
+ ]
+},
+{
+ id:'pd2', title:'Migrating, integrating, and getting help', minutes:6,
+ body:[
+  {t:'p',cls:'lede',c:'Most countries did not start with QAT. They started with PipeLine or Quantimed, and arrived with years of history they did not want to retype.'},
+  {t:'h',c:'Coming off PipeLine'},
+  {t:'p',c:'PipeLine stored supply plans in an Access database. The ConvertPipelineToJson tool turns that file into JSON, and the manual has a dedicated annex on importing a PipeLine program. The practical advice is the same as for any migration: import, then reconcile a handful of products by hand against the old tool before trusting the rest.'},
+  {t:'h',c:'Integrations'},
+  {t:'p',c:'QAT exchanges data through an API. The live integration is with ARTMIS, GHSC-PSM\u2019s order management system, which imports USG product and shipment data and keeps delivery dates and statuses current automatically. LMIS and GFPVAN are the other systems in the picture. ERP-linked shipment fields are read-only in QAT by design — the source of truth stays upstream.'},
+  {t:'h',c:'When something is wrong'},
+  {t:'p',c:'There are three different escalation paths and using the wrong one wastes a week.'},
+  {t:'table',head:['Problem','Where it goes'],rows:[
+   ['A number in your plan looks wrong','Check your own inputs first, then the QAT problem list'],
+   ['A product, funder or agent is missing','Ticket to the realm administrator — it is master data'],
+   ['A user needs different access','Ticket for a user role change'],
+   ['The application itself is broken','Ticket to the application administrator; a public issue on GitHub if it is a code bug']
+  ]},
+  {t:'note',b:'Before you raise anything',c:'Note the program, the planning unit, the month, and what you expected versus what you saw. A screenshot of the supply planning table with Show Formulae open answers most questions before anyone else has to reproduce it.'}
+ ],
+ exercises:[
+  {type:'mcq', tag:'Apply',
+   q:'Your country is moving off PipeLine and wants to keep its supply plan history. What is the route?',
+   options:['Retype it into QAT by hand','Convert the PipeLine Access database to JSON and import the program','Upload the Access file directly to QAT','Start fresh — history cannot be carried over'],
+   answer:1,
+   explain:'ConvertPipelineToJson exists for exactly this, and the manual carries an annex on the import. Reconcile a few products manually afterwards rather than assuming the import was clean.'},
+  {type:'mcq', tag:'Judgement',
+   q:'A shipment imported from ARTMIS has the wrong delivery date. Where do you fix it?',
+   options:['Edit the field in QAT','Fix it in the procurement system upstream','Delete the shipment and re-enter it manually','Raise a master data ticket'],
+   answer:1,
+   explain:'ERP-linked fields are read-only in QAT on purpose. Overwriting them locally would be silently reversed at the next sync, and would put your plan out of step with the order it describes.'}
+ ]
+}
+];
+
+const TRACKS = [
+ {id:'fc', title:'Forecasting', blurb:'How QAT is organised, the four units, trees and extrapolation, and how forecast error is measured.', lessons:FC},
+ {id:'sp', title:'Supply planning', blurb:'Balances, AMC and MOS, min and max, shipment statuses, batches, expiry and scenarios.', lessons:SP},
+ {id:'pd', title:'The tool itself', blurb:'QAT as open source: the repositories, migrating off PipeLine, integrations and escalation paths.', lessons:PROD}
+];
+
+/* ============================ glossary ============================ */
+const GLOSSARY = [
+ ['AMC','Average monthly consumption. A dynamic value recalculated each month. The QAT default averages the 3 previous months, the current month and 2 future months; missing months are null, not zero. Administrators can widen the window to 12 months either side.'],
+ ['ARU — alternate reporting unit','The product and unit a country actually reports consumption or stock in, with a multiplier to the planning unit. Report in boxes of 20 bottles and QAT converts to bottles.'],
+ ['ARIMA','Auto-regressive integrated moving average. A time-series method for projecting consumption from historical trends and patterns.'],
+ ['ARTMIS','GHSC-PSM\u2019s system for tracking procurement, shipping and delivery of USG-financed commodities. QAT integrates with it for shipment data.'],
+ ['Batch','A quantity of product with a shared expiry date. QAT creates one batch per shipment, expiring at receive date plus shelf life.'],
+ ['Consumption-based forecast','A forecast extrapolated from historical actual consumption using linear and non-linear methods.'],
+ ['Continuous and discrete usage','On a forecasting tree, whether a product is used indefinitely or for a defined period. Discrete products need a period of use unless they are single use.'],
+ ['Data source','Where a transactional record — consumption, inventory, adjustment, shipment — originated. Applied per record.'],
+ ['Digital public good','QAT is registered as one, and released under Apache 2.0 with the source on GitHub under the FASP-QAT organisation.'],
+ ['Equivalency unit (EU)','A standardised unit converting different strengths or pack sizes into a common measure so they can be aggregated. Cannot be combined with ARUs.'],
+ ['ERP linking','Integration with a procurement agent\u2019s order management system. Linked shipment fields are not editable inside QAT.'],
+ ['FEFO','First expiry, first out. QAT\u2019s default batch logic for consumption. LEFO is the opposite and is discouraged.'],
+ ['Forecasting unit (FU)','The smallest unit used when forecasting — tablets, tests, vials. Always smaller than or equal to the planning unit.'],
+ ['Lead times','Mapped to the shipment lifecycle in six segments: planned to submitted, submitted to approved, approved to shipped, shipped to arrived by sea, shipped to arrived by air, and arrived to received.'],
+ ['MAPE','Mean absolute percentage error. Averages each period\u2019s percentage error with equal weight.'],
+ ['Master data sync','Standardised data shared across a realm. Syncs on online login or manual sync; full program data is a separate download and upload.'],
+ ['Minimum and maximum stock levels','Minimum is set per planning unit at program level. Maximum is calculated as minimum plus the reorder interval.'],
+ ['MOS — months of stock','Ending balance divided by AMC. Recalculated every month.'],
+ ['PipeLine','The legacy supply planning tool QAT replaced. Supply plans lived in an Access database; ConvertPipelineToJson migrates them.'],
+ ['Plan by MOS','For high-volume products with minimal expiry, where shipments mostly replace consumption. Min and max are expressed in months.'],
+ ['Plan by quantity','For low-volume, high-expiry products held for emergencies. Min is a quantity; max is min plus reorder interval times AMC.'],
+ ['Planning unit (PU)','The unit QAT plans and orders in — a bottle of 30 tablets, a 10x10 blister pack.'],
+ ['Program','One country, one or more technical areas, one region, one organisation. The equivalent of a PipeLine supply plan database.'],
+ ['PWA','Progressive web application. QAT works offline against a program you downloaded while online.'],
+ ['QPL — QAT problem list','Flags data issues, inconsistencies and warnings affecting forecasts or supply plans.'],
+ ['Quantimed','The legacy forecasting tool. QAT\u2019s forecasting module replaced its module 2.'],
+ ['Realm','A set of shared master data — product catalogue, funders, procurement agents. The Global Health Realm is the one in use.'],
+ ['Reorder interval','Months between shipments, default 1. Used to calculate the maximum.'],
+ ['RMSE','Root mean squared error. In units, and penalises large misses disproportionately.'],
+ ['Shipment','A planned or actual delivery into the supply chain, shown on the plan by expected receive date regardless of order status.'],
+ ['Shipment statuses','Nine in total: suggested, planned, submitted, approved, shipped, arrived, received, on hold, cancelled. Suggested and cancelled are excluded from projections; on hold is included.'],
+ ['Suggested shipment','An early warning generated by QAT when stock will fall below minimum. It does not affect projections until accepted and given another status.'],
+ ['Technical area','Synonymous with commodity group — ARV, family planning, malaria. Used to define a program.'],
+ ['Tree forecast','A flexible structure converting demographic, morbidity or service data into commodity quantities for products without usable consumption history.'],
+ ['Tree template','A pre-defined forecasting tree that can be downloaded and customised to a country context.'],
+ ['Triple exponential smoothing','Holt-Winters. Models level, trend and seasonality together — the method for seasonal commodities.'],
+ ['Unmet demand','What would have been consumed had stock been available. QAT never shows negative stock; the shortfall goes in its own row.'],
+ ['Usage template','Pre-defined rates of use for specific products, reusable across trees and programs.'],
+ ['WAPE','Weighted absolute percentage error. Total absolute error as a share of total actual demand, so volume dominates.']
+];
+
+/* ============================ exam pool ============================ */
+const EXAM = [
+ {q:'What does QAT\u2019s default AMC window cover?',
+  options:['The last 3 months','The last 6 months','3 months back, the current month, and 2 months forward','The last 12 months'],
+  a:2, e:'Six months in total, reaching two months into the forecast. Administrators can extend it to 12 months either side.'},
+ {q:'A month inside the AMC window has no consumption data. How is it treated?',
+  options:['As zero','As null and excluded from the average','Replaced by the forecast','The AMC is not calculated at all'],
+  a:1, e:'Null, not zero. Counting it as zero would understate the AMC and shrink every order built on it.'},
+ {q:'How is the maximum stock level derived for a product planned by MOS?',
+  options:['Typed in by the program administrator','Minimum plus the reorder interval','Twice the minimum','AMC times the lead time'],
+  a:1, e:'Max MOS = min MOS + reorder interval. Only the minimum is set directly.'},
+ {q:'Which two shipment statuses are excluded from projected balances?',
+  options:['Planned and on hold','Suggested and cancelled','Submitted and approved','Arrived and received'],
+  a:1, e:'Everything else counts, including on hold.'},
+ {q:'A planning unit is stocked out, and both of the next two months are below minimum. What does QAT suggest?',
+  options:['No shipment','A shipment bringing the month to minimum','A shipment bringing the month to maximum','An emergency shipment to twice the maximum'],
+  a:2, e:'Stockout plus both following months below min means a top-up to maximum.'},
+ {q:'Where does QAT place a suggested shipment quantity?',
+  options:['In the month stock goes below minimum','In month N minus the distribution lead time','In the current month','In the first month of the plan'],
+  a:1, e:'It appears in the month you would need to act, not the month the problem surfaces.'},
+ {q:'A shipment\u2019s batch expiry date is calculated from what?',
+  options:['The order date plus shelf life','The receive date plus shelf life','The supplier\u2019s stated expiry only','The end of the planning horizon'],
+  a:1, e:'Receive date plus the planning unit\u2019s shelf life, and you can override it per batch.'},
+ {q:'A positive manual adjustment is entered. Which batch gets it by default?',
+  options:['The one expiring soonest','The one with the longest shelf life','The largest batch','It is split proportionally'],
+  a:1, e:'Best-case logic sends positives to the longest shelf life and negatives to the soonest expiry.'},
+ {q:'Which product profile calls for plan by quantity?',
+  options:['A high-volume ACT with steady consumption','Anti-venom held at every district with high expiry','A contraceptive with a stable AMC','Any product with a long shelf life'],
+  a:1, e:'Low consumption, high inventory relative to it, and shipments replacing expired rather than consumed product.'},
+ {q:'A supply plan shows an unmet demand row with values in it. What does that mean?',
+  options:['Stock went negative','Demand exceeded available stock and was clipped','The forecast was too low','Shipments were cancelled'],
+  a:1, e:'QAT never shows negative stock. Unmet demand is what would have been consumed had stock been there.'},
+ {q:'MOS is calculated as which of these?',
+  options:['Opening balance divided by AMC','Ending balance divided by AMC','Ending balance divided by the forecast','AMC divided by ending balance'],
+  a:1, e:'Ending balance ÷ AMC, recalculated each month.'},
+ {q:'For a product planned by quantity, which row is colour-coded for stock status?',
+  options:['Months of stock','Ending balance','Consumption','Shipments'],
+  a:1, e:'Plan by MOS colours the months of stock row; plan by quantity colours the ending balance.'},
+ {q:'Which scenario tests what the plan looks like without orders that have no money behind them?',
+  options:['Re-plan supply plan','Remove unfunded shipments','Decrease forecast consumption','Phase product out'],
+  a:1, e:'It drops every shipment whose funding source is still TBD.'},
+ {q:'An alternate reporting unit has a multiplier of 20 and 340 units are reported. How many planning units is that?',
+  options:['320','6,800','17','360'],
+  a:1, e:'340 x 20 = 6,800 planning units.'},
+ {q:'MAPE is much worse than WAPE for a forecast version. What does that suggest?',
+  options:['The largest months were badly forecast','The errors are concentrated in low-volume months','The forecast is biased high throughout','The metrics were calculated on different periods'],
+  a:1, e:'MAPE weights every month equally, so small months with large percentage errors dominate it. WAPE weights by volume.'},
+ {q:'Which forecasting method explicitly handles seasonality?',
+  options:['Linear extrapolation','Triple exponential smoothing (Holt-Winters)','A usage template','Simple moving average'],
+  a:1, e:'Holt-Winters models level, trend and seasonality together.'},
+ {q:'Where does a shipment appear on the supply plan?',
+  options:['The month it was ordered','The month it shipped','The month it is expected to be received and usable','The month it was approved'],
+  a:2, e:'Expected receive date, regardless of order status.'},
+ {q:'Which of these requires raising a ticket rather than editing in your program?',
+  options:['The minimum stock level','The reorder interval','Adding a product to the catalogue','The AMC window'],
+  a:2, e:'The product catalogue is realm-level master data, shared by everyone in the realm.'},
+ {q:'A product has never been issued in-country and has no consumption history. Which forecasting route fits?',
+  options:['Linear extrapolation on a short window','A tree forecast from morbidity or service data','ARIMA with default settings','Copy a similar product\u2019s history'],
+  a:1, e:'With nothing to extrapolate, a tree converts the underlying driver into commodity quantities.'},
+ {q:'Which unit is always the smallest?',
+  options:['Planning unit','Alternate reporting unit','Forecasting unit','Equivalency unit'],
+  a:2, e:'You forecast in tablets and plan in packs. FU is always smaller than or equal to PU.'},
+ {q:'Under what licence is QAT released?',
+  options:['Apache 2.0','GPL v3','Proprietary per-country licence','Creative Commons non-commercial'],
+  a:0, e:'Apache 2.0, with the source on GitHub under the FASP-QAT organisation, and registered as a digital public good.'},
+ {q:'A country is migrating its supply plan history off PipeLine. What is the supported route?',
+  options:['Manual re-entry','Convert the Access database to JSON and import the program','Upload the Access file directly','Export to Excel and paste'],
+  a:1, e:'The ConvertPipelineToJson tool exists for this, and the manual has an annex on the import.'},
+ {q:'A delivery date imported from ARTMIS is wrong. Where is it fixed?',
+  options:['Directly in the QAT shipment record','In the upstream procurement system','By deleting and re-entering the shipment','By raising a master data ticket'],
+  a:1, e:'ERP-linked fields are read-only in QAT by design; a local edit would be reversed at the next sync.'},
+ {q:'A tree forecast and a consumption forecast for the same product differ by 40%. What is the right first step?',
+  options:['Average them','Use the higher of the two','Identify which assumption drives the gap','Discard the tree forecast'],
+  a:2, e:'The gap is the finding — usually either overstated coverage or consumption suppressed by stockouts.'},
+ {q:'Which module launched first?',
+  options:['Forecasting, in 2020','Supply planning, in December 2020','Both together in June 2022','Forecasting, in June 2022'],
+  a:1, e:'Supply planning launched in December 2020; the forecasting module followed in June 2022.'}
+];
+
+/* ============================ shared UI ============================ */
+function Chart(props){
+  const html = chartSVG(props.opts);
+  function onClick(e){
+    const t = e.target.closest ? e.target.closest('[data-pick]') : null;
+    if(t && props.onPick) props.onPick(+t.getAttribute('data-pick'));
+  }
+  return <div className="fig" onClick={onClick}>
+    <div dangerouslySetInnerHTML={{__html:html}} />
+    {props.cap ? <figcaption>{props.cap}</figcaption> : null}
+  </div>;
+}
+
+function Block(b){
+  if(b.t==='p') return <p className={b.cls||''}>{b.c}</p>;
+  if(b.t==='h') return <h2>{b.c}</h2>;
+  if(b.t==='list') return <ul className="blist">{b.items.map((x,i)=><li key={i}>{x}</li>)}</ul>;
+  if(b.t==='def') return <div className="defn"><b>{b.term}</b>{b.c}</div>;
+  if(b.t==='note') return <div className="note"><b>{b.b}</b>{b.c}</div>;
+  if(b.t==='eq') return <div className="eq">{b.c}{b.note?<small>{b.note}</small>:null}</div>;
+  if(b.t==='table') return <table><thead><tr>{b.head.map((h,i)=><th key={i}>{h}</th>)}</tr></thead>
+    <tbody>{b.rows.map((r,i)=><tr key={i}>{r.map((c,j)=><td key={j}>{c}</td>)}</tr>)}</tbody></table>;
+  if(b.t==='chart') return <Chart opts={{values:b.values,min:b.min,max:b.max}} cap={b.cap}/>;
+  if(b.t==='links') return <ul className="linklist">{b.items.map((x,i)=><li key={i}><a href={x.u} target="_blank" rel="noopener noreferrer">{x.n}</a><p>{x.d}</p></li>)}</ul>;
+  return null;
+}
+
+/* ============================ scenario sandbox ============================ */
+const BASE = {
+  consumption:[9500,9800,10200,10500,11000,11500,12000,12000,11500,11000,10500,10000],
+  opening:30000, min:3, reorder:2,
+  shipments:[
+    {m:3, qty:20000, status:'Planned', funding:'TBD'},
+    {m:6, qty:25000, status:'Submitted', funding:'PMI'},
+    {m:9, qty:20000, status:'Planned', funding:'Global Fund'}
+  ]
+};
+function Sandbox(){
+  const [pct,setPct] = useState(0);
+  const [noUnfunded,setNoUnfunded] = useState(false);
+  const [noPlanned,setNoPlanned] = useState(false);
+
+  const build = (p, unf, pln) => {
+    const cons = BASE.consumption.map(c => c*(1+p/100));
+    const ship = new Array(12).fill(0);
+    BASE.shipments.forEach(s=>{
+      if(unf && s.funding==='TBD') return;
+      if(pln && s.status==='Planned') return;
+      ship[s.m] += s.qty;
+    });
+    return project({opening:BASE.opening, consumption:cons, shipments:ship,
+      adjustments:null, min:BASE.min, reorder:BASE.reorder});
+  };
+  const rows = useMemo(()=>build(pct,noUnfunded,noPlanned),[pct,noUnfunded,noPlanned]);
+  const base = useMemo(()=>build(0,false,false),[]);
+  const mos = rows.map(r=> r.mos===null?0:r.mos);
+  const ghost = base.map(r=> r.mos===null?0:r.mos);
+  const max = BASE.min + BASE.reorder;
+  const under = rows.filter(r=> r.mos!==null && r.mos>0 && r.mos<BASE.min).length;
+  const over  = rows.filter(r=> r.mos!==null && r.mos>max).length;
+  const out   = rows.filter(r=> r.close<=0).length;
+  const unmet = rows.reduce((a,r)=>a+r.unmet,0);
+
+  return <div className="sandbox">
+    <h3>Scenario sandbox</h3>
+    <p className="sub">One planning unit, twelve months. Opening stock 30,000. Min 3 MOS, reorder interval 2, so max is 5. Three shipments: 20,000 in April (planned, funding TBD), 25,000 in July (submitted, PMI), 20,000 in October (planned, Global Fund). The dashed line is the untouched baseline.</p>
+    <Chart opts={{values:mos, ghost:ghost, min:BASE.min, max:max, top:10}}/>
+    <div className="ctrl">
+      <label>
+        <span>Adjust forecast consumption</span>
+        <input type="range" min="-40" max="40" step="5" value={pct}
+          onChange={e=>setPct(+e.target.value)} />
+        <span className="val">{pct>0?'+':''}{pct}%</span>
+      </label>
+    </div>
+    <div className="toggles">
+      <label><input type="checkbox" checked={noUnfunded} onChange={e=>setNoUnfunded(e.target.checked)} />
+        <span>Remove unfunded shipments — drops the April order, funding source TBD</span></label>
+      <label><input type="checkbox" checked={noPlanned} onChange={e=>setNoPlanned(e.target.checked)} />
+        <span>Remove all planned shipments — drops April and October, leaving only the submitted July order</span></label>
+    </div>
+    <div className="readout">
+      <div><span>Months below min</span><b>{under}</b></div>
+      <div><span>Months above max</span><b>{over}</b></div>
+      <div><span>Months stocked out</span><b>{out}</b></div>
+      <div><span>Unmet demand</span><b>{nf(unmet)}</b></div>
+    </div>
+  </div>;
+}
+
+
+/* ============================ AMC window explorer ============================ */
+const AMC_SERIES = [
+  {m:'Jan', v:4100},{m:'Feb', v:4300},{m:'Mar', v:4200},{m:'Apr', v:null},
+  {m:'May', v:4500},{m:'Jun', v:4400},{m:'Jul', v:4300},{m:'Aug', v:4600},
+  {m:'Sep', v:4800},{m:'Oct', v:5000},{m:'Nov', v:5200},{m:'Dec', v:5100},
+  {m:'Jan +1', v:5000},{m:'Feb +1', v:4900}
+];
+const NOW = 8;
+function AmcExplorer(){
+  const [back,setBack] = useState(3);
+  const [fwd,setFwd] = useState(2);
+  const inWindow = i => i >= NOW-back && i <= NOW+fwd;
+  const vals = AMC_SERIES.filter((d,i)=> inWindow(i) && d.v!==null).map(d=>d.v);
+  const amc = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+  const skipped = AMC_SERIES.filter((d,i)=> inWindow(i) && d.v===null).length;
+  const balance = 22000;
+  return <div className="sandbox">
+    <h3>AMC window explorer</h3>
+    <p className="sub">One planning unit. September is the current month. April has no consumption record — watch what happens to the average when the window reaches it.</p>
+    <div className="months">{AMC_SERIES.map((d,i)=>
+      <div className="mcell" key={i} data-in={inWindow(i)?'1':'0'}
+        data-now={i===NOW?'1':'0'} data-null={d.v===null?'1':'0'}>
+        {d.m}<b>{d.v===null?'—':nf(d.v)}</b></div>)}
+    </div>
+    <div className="ctrl"><label>
+      <span>Months back</span>
+      <input type="range" min="0" max="12" value={back} onChange={e=>setBack(+e.target.value)} />
+      <span className="val">{back}</span></label></div>
+    <div className="ctrl"><label>
+      <span>Months forward</span>
+      <input type="range" min="0" max="12" value={fwd} onChange={e=>setFwd(+e.target.value)} />
+      <span className="val">{fwd}</span></label></div>
+    <div className="readout">
+      <div><span>Months with data</span><b>{vals.length}</b></div>
+      <div><span>Months skipped as null</span><b>{skipped}</b></div>
+      <div><span>AMC</span><b>{amc===null?'n/a':nf(amc)}</b></div>
+      <div><span>MOS on 22,000</span><b>{amc? (balance/amc).toFixed(1) : 'n/a'}</b></div>
+    </div>
+    <p className="verdict">{back===3 && fwd===2
+      ? 'This is the QAT default: three back, the current month, two forward.'
+      : 'A wider window smooths the average and reacts more slowly; a narrower one tracks a change in demand faster but is noisier. Administrators can go to 12 months either side.'}</p>
+  </div>;
+}
+
+/* ============================ forecast error lab ============================ */
+const ERR_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun'];
+const ACTUAL =  [1200,1500, 900,1800, 400,1600];
+const VER_A =   [1300,1400,1000,1700, 700,1500];
+const VER_B =   [1250,1650, 850,2000, 420,1450];
+function metrics(actual, fc, keep){
+  let n=0, sumPct=0, sumAbs=0, sumAct=0, sumSq=0;
+  actual.forEach((a,i)=>{
+    if(!keep[i]) return;
+    const err = Math.abs(fc[i]-a);
+    n++; sumPct += err/a; sumAbs += err; sumAct += a; sumSq += err*err;
+  });
+  if(!n) return null;
+  return {mape: sumPct/n*100, wape: sumAbs/sumAct*100, rmse: Math.sqrt(sumSq/n)};
+}
+function ErrorLab(){
+  const [keep,setKeep] = useState([true,true,true,true,true,true]);
+  const a = metrics(ACTUAL, VER_A, keep);
+  const b = metrics(ACTUAL, VER_B, keep);
+  const toggle = i => setKeep(k => k.map((v,j)=> j===i? !v : v));
+  const line = (a && b)
+    ? 'Version ' + (a.mape<=b.mape?'A':'B') + ' has the lower MAPE; version '
+      + (a.wape<=b.wape?'A':'B') + ' has the lower WAPE'
+      + (((a.mape<=b.mape) !== (a.wape<=b.wape))
+         ? ' — the two metrics disagree, which is the whole point of reporting both.'
+         : '. Here they agree.')
+    : 'Keep at least one month to calculate anything.';
+  return <div className="sandbox">
+    <h3>Forecast error lab</h3>
+    <p className="sub">Six months of actuals against two forecast versions. May was a stockout month, so its actual is far below trend — click any month to exclude it and watch the metrics move.</p>
+    <table className="plantable">
+      <thead><tr><th>Month</th><th>Actual</th><th>Version A</th><th>Version B</th></tr></thead>
+      <tbody>{ERR_MONTHS.map((m,i)=>
+        <tr key={i} style={{opacity: keep[i]?1:0.4}}>
+          <td><button className="mcell mtoggle" data-off={keep[i]?'0':'1'}
+            style={{minWidth:'auto',padding:'3px 9px'}} onClick={()=>toggle(i)}>{m}</button></td>
+          <td>{nf(ACTUAL[i])}</td><td>{nf(VER_A[i])}</td><td>{nf(VER_B[i])}</td>
+        </tr>)}
+      </tbody>
+    </table>
+    <div className="metrics">
+      <div className="mbox" data-win={(a&&b&&a.wape<=b.wape)?'1':'0'}>
+        <h5>Version A</h5>
+        <div className="row"><span>MAPE</span>{a? a.mape.toFixed(1)+'%' : '—'}</div>
+        <div className="row"><span>WAPE</span>{a? a.wape.toFixed(1)+'%' : '—'}</div>
+        <div className="row"><span>RMSE</span>{a? nf(a.rmse) : '—'}</div>
+      </div>
+      <div className="mbox" data-win={(a&&b&&b.wape<a.wape)?'1':'0'}>
+        <h5>Version B</h5>
+        <div className="row"><span>MAPE</span>{b? b.mape.toFixed(1)+'%' : '—'}</div>
+        <div className="row"><span>WAPE</span>{b? b.wape.toFixed(1)+'%' : '—'}</div>
+        <div className="row"><span>RMSE</span>{b? nf(b.rmse) : '—'}</div>
+      </div>
+    </div>
+    <p className="verdict">{line} The highlighted box is the one with the lower WAPE.</p>
+  </div>;
+}
+
+function Widget({kind}){
+  if(kind==='scenario') return <Sandbox/>;
+  if(kind==='amc') return <AmcExplorer/>;
+  if(kind==='error') return <ErrorLab/>;
+  return null;
+}
+
+/* ============================ exercises ============================ */
+function Exercise({ex, st, set}){
+  const solved = st.status==='right' || st.status==='shown';
+  const finish = ok => set(Object.assign({}, st, {status: ok?'right':'wrong', tries: st.tries + (ok?0:1)}));
+  const [draft,setDraft] = useState(st.draft||'');
+
+  let body = null;
+
+  if(ex.type==='mcq' || ex.type==='multi'){
+    const chosen = st.pick;
+    body = <div className="opts">{ex.options.map((o,i)=>{
+      let mark=null;
+      if(solved && i===ex.answer) mark='right';
+      else if(st.status!=='open' && i===chosen) mark='wrong';
+      return <button key={i} className="opt" data-mark={mark} disabled={solved}
+        onClick={()=>{ set(Object.assign({}, st, {pick:i, status: i===ex.answer?'right':'wrong', tries: st.tries + (i===ex.answer?0:1)})); }}>{o}</button>;
+    })}</div>;
+  }
+
+  if(ex.type==='num'){
+    body = <div className="numrow">
+      <input type="text" inputMode="decimal" value={solved? (st.pick||'') : draft} disabled={solved}
+        placeholder="0" aria-label="Your answer"
+        onChange={e=>setDraft(e.target.value)}
+        onKeyDown={e=>{ if(e.key==='Enter') check(); }} />
+      <span className="unit">{ex.unit}</span>
+      {solved?null:<button className="btn" onClick={()=>check()}>Check answer</button>}
+    </div>;
+  }
+  function check(){
+    const raw = String(draft).replace(/[, %]/g,'');
+    const v = parseFloat(raw);
+    const ok = !isNaN(v) && Math.abs(v-ex.answer) <= (ex.tol||0);
+    set(Object.assign({}, st, {pick:draft, draft:draft, status: ok?'right':'wrong', tries: st.tries + (ok?0:1)}));
+  }
+
+  if(ex.type==='seq'){
+    const seq = st.seq||[];
+    body = <div>
+      <div className="opts" style={{marginBottom:'14px'}}>{ex.items.map((it,i)=>{
+        const pos = seq.indexOf(i);
+        let mark=null; if(solved) mark='right'; else if(pos>-1) mark='chosen';
+        return <button key={i} className="opt" data-mark={mark} disabled={solved}
+          onClick={()=>{ const s = seq.includes(i)? seq.filter(x=>x!==i) : seq.concat([i]);
+                         set(Object.assign({}, st, {seq:s})); }}>
+          <span className="seqrow">
+            <span className={'badge '+((pos>-1||solved)?'set':'')}>{solved? (ex.order.indexOf(i)+1) : (pos>-1?pos+1:'')}</span>
+            <span>{it}</span>
+          </span></button>;
+      })}</div>
+      {solved?null:<div className="actions" style={{marginTop:0}}>
+        <button className="btn" disabled={seq.length<ex.items.length}
+          onClick={()=>finish(seq.length===ex.order.length && seq.every((v,i)=>v===ex.order[i]))}>Check order</button>
+        <button className="btn ghost" onClick={()=>set(Object.assign({}, st, {seq:[]}))}>Clear</button>
+      </div>}
+    </div>;
+  }
+
+  if(ex.type==='pick'){
+    body = <div>
+      <Chart opts={{values:ex.values, months:ex.months, min:ex.min, max:ex.max,
+        selected: solved?null:st.pick, reveal: solved?ex.answer:null, pickable:!solved}}
+        onPick={i=>{ if(!solved) set(Object.assign({}, st, {pick:i})); }} />
+      {solved?null:<div className="actions" style={{marginTop:0}}>
+        <button className="btn" disabled={st.pick===null||st.pick===undefined}
+          onClick={()=>finish(st.pick===ex.answer)}>Check answer</button>
+        <span className="hintline">{(st.pick===null||st.pick===undefined)?'Tap a month on the chart':'Selected: '+(ex.months||MO)[st.pick]}</span>
+      </div>}
+    </div>;
+  }
+
+  if(ex.type==='classify'){
+    const assign = st.assign||{};
+    const pool = ex.items.map((it,i)=>i).filter(i=>assign[i]===undefined);
+    const cycle = i => {
+      const order = ex.buckets.map(b=>b.id);
+      const cur = assign[i];
+      const nxt = cur===undefined ? order[0] : (order.indexOf(cur)===order.length-1 ? undefined : order[order.indexOf(cur)+1]);
+      const a = Object.assign({}, assign);
+      if(nxt===undefined) delete a[i]; else a[i]=nxt;
+      set(Object.assign({}, st, {assign:a}));
+    };
+    const chip = (i,mark) => <button key={i} className="chip" data-mark={mark} disabled={solved}
+      onClick={()=>cycle(i)}>{ex.items[i].text}</button>;
+    body = <div>
+      {pool.length? <div className="pool">{pool.map(i=>chip(i,null))}</div> : null}
+      <div className="buckets">{ex.buckets.map(b=>
+        <div className="bucket" key={b.id}>
+          <h4>{b.label}</h4>
+          {ex.items.map((it,i)=> assign[i]===b.id ?
+            chip(i, solved ? (it.bucket===b.id?'right':'wrong') : null) : null)}
+        </div>)}
+      </div>
+      {solved?null:<div className="actions">
+        <button className="btn" disabled={pool.length>0}
+          onClick={()=>finish(ex.items.every((it,i)=>assign[i]===it.bucket))}>Check</button>
+        <span className="hintline">{pool.length? 'Tap a label to file it — tap again to move it' : 'All filed'}</span>
+      </div>}
+    </div>;
+  }
+
+  if(ex.type==='plan'){
+    const vals = st.vals||{};
+    let open = ex.opening, answers=[];
+    ex.rows.forEach(r=>{ const close = open + r.ship - r.cons; answers.push(close); open = close; });
+    body = <div>
+      <table className="plantable">
+        <thead><tr><th>Month</th><th>Opening</th><th>Shipments</th><th>Consumption</th><th>Ending balance</th></tr></thead>
+        <tbody>{ex.rows.map((r,i)=>{
+          const openShown = i===0 ? ex.opening : (solved ? answers[i-1] : null);
+          return <tr key={i}>
+            <td>{r.m}</td>
+            <td>{openShown===null? '—' : nf(openShown)}</td>
+            <td>{r.ship? nf(r.ship) : '—'}</td>
+            <td>{nf(r.cons)}</td>
+            <td>{solved ? nf(answers[i]) :
+              <input type="text" inputMode="numeric" value={vals[i]||''} placeholder="?"
+                onChange={e=>{ const v=Object.assign({},vals); v[i]=e.target.value;
+                               set(Object.assign({}, st, {vals:v})); }} />}</td>
+          </tr>;
+        })}</tbody>
+      </table>
+      {solved?null:<div className="actions">
+        <button className="btn"
+          disabled={ex.rows.some((r,i)=>!vals[i])}
+          onClick={()=>finish(answers.every((a,i)=> Math.abs(parseFloat(String(vals[i]).replace(/[, ]/g,''))-a) < 1 ))}>
+          Check the column</button>
+        <span className="hintline">Each ending balance carries into the next month</span>
+      </div>}
+    </div>;
+  }
+
+  const showReveal = st.status==='wrong' && st.tries>=2 && !solved;
+
+  return <section className="ex">
+    <p className="ex-tag"><i>{ex.tag}</i></p>
+    <p className="ex-q">{ex.q}</p>
+    {body}
+    {st.status==='wrong' ? <div className="feedback" data-tone="wrong">
+      <b>Not right yet.</b>{ex.hint || 'Have another look at the section above, then try again.'}</div> : null}
+    {solved ? <div className="feedback" data-tone="right">
+      <b>{st.status==='right'?'Correct.':'Here it is.'}</b>{ex.explain}</div> : null}
+    {showReveal ? <div className="actions">
+      <button className="btn ghost sm" onClick={()=>set(Object.assign({}, st, {status:'shown'}))}>Show me the answer</button>
+    </div> : null}
+  </section>;
+}
+
+/* ============================ app ============================ */
+const FLAT = [];
+TRACKS.forEach((tr,ti)=> tr.lessons.forEach((ls,li)=> FLAT.push({ti,li,tr,ls})));
+
+function Rail({loc, go, isDone}){
+  return <nav className="rail" aria-label="Course contents">
+    {TRACKS.map((tr,ti)=>{
+      const n = tr.lessons.filter(isDone).length;
+      return <div className="railgroup" key={tr.id}>
+        <p className="railtitle"><b>{tr.title}</b> · {n}/{tr.lessons.length}</p>
+        <ul className="railitems">{tr.lessons.map((ls,li)=>{
+          const now = loc && loc.ti===ti && loc.li===li;
+          const state = now?'now':(isDone(ls)?'done':'todo');
+          return <li key={ls.id} data-state={state}>
+            <span className="dot"></span>
+            <button className="node" onClick={()=>go(ti,li)}>{ls.title}
+              <span className="mins">{ls.minutes} min</span></button>
+          </li>;
+        })}</ul>
+      </div>;
+    })}
+  </nav>;
+}
+
+function Home({isDone, go}){
+  return <div className="hero">
+    <p className="kicker">Self-paced · built on the QAT user manual</p>
+    <h1>Forecasting and supply planning in QAT</h1>
+    <p className="lede">Fourteen lessons across three tracks, starting with forecasting and moving into
+    supply planning. Worked calculations, three live sandboxes, a searchable glossary and a scored exam.
+    Everything runs in this page — nothing is stored anywhere, so a refresh starts you over.</p>
+    <Chart opts={{values:[9.0,8.2,7.4,6.6,5.8,5.0,4.2,3.4,2.6,1.8,1.0,0.2],min:3,max:5,animate:true}}/>
+    <div className="cards">{TRACKS.map((tr,ti)=>{
+      const n = tr.lessons.filter(isDone).length;
+      return <button className="tcard" key={tr.id} onClick={()=>go(ti,0)}>
+        <h3>{tr.title}</h3><p>{tr.blurb}</p>
+        <span className="pct">{n} of {tr.lessons.length} lessons done</span>
+      </button>;
+    })}</div>
+    <ul className="facts">
+      <li><span>Built for</span><span>Supply planners, MOH staff and students new to quantification</span></li>
+      <li><span>You need</span><span>No QAT access — a calculator helps</span></li>
+      <li><span>Ends with</span><span>A ten-question exam drawn from a pool of {EXAM.length}</span></li>
+      <li><span>Source</span><span>The QAT user manual and the FASP-QAT repositories on GitHub</span></li>
+    </ul>
+    <div className="foot"><button className="btn" onClick={()=>go(0,0)}>Start the first lesson</button></div>
+  </div>;
+}
+
+function LessonView({loc, go, stOf, setSt, isDone, toExam}){
+  const {ti,li} = loc;
+  const tr = TRACKS[ti], ls = tr.lessons[li];
+  const done = isDone(ls);
+  const idx = FLAT.findIndex(f=>f.ls.id===ls.id);
+  const next = FLAT[idx+1], prev = FLAT[idx-1];
+  return <div>
+    <p className="kicker">{tr.title} · lesson {li+1} of {tr.lessons.length}</p>
+    <h1>{ls.title}</h1>
+    {ls.body.map((b,i)=> b.t==='widget' ? <Widget key={i} kind={b.kind}/> : <Block key={i} {...b}/>)}
+    {ls.exercises.map((e,i)=>{
+      const key = ls.id+':'+i;
+      return <Exercise key={key} ex={e} st={stOf(key)} set={v=>setSt(key,v)} />;
+    })}
+    <div className="foot">
+      {prev ? <button className="btn ghost" onClick={()=>go(prev.ti,prev.li)}>Back</button> : null}
+      {next
+        ? <button className="btn" disabled={!done} onClick={()=>go(next.ti,next.li)}>
+            {next.ti!==ti ? 'Start '+next.tr.title.toLowerCase() : 'Next lesson'}</button>
+        : <button className="btn" disabled={!done} onClick={toExam}>Take the exam</button>}
+      {done ? null : <span className="hintline">Answer every question above to continue</span>}
+    </div>
+  </div>;
+}
+
+function Glossary(){
+  const [q,setQ] = useState('');
+  const list = GLOSSARY.filter(g=>{
+    const s = (g[0]+' '+g[1]).toLowerCase();
+    return q.trim()==='' || s.indexOf(q.toLowerCase().trim())>-1;
+  });
+  return <div>
+    <p className="kicker">Reference</p>
+    <h1>Glossary</h1>
+    <p className="lede">The terms that appear on QAT screens and in the manual, in the sense QAT uses them.</p>
+    <input className="gsearch" type="text" value={q} placeholder="Search terms and definitions"
+      onChange={e=>setQ(e.target.value)} aria-label="Search the glossary" />
+    <p className="gcount">{list.length} of {GLOSSARY.length} terms</p>
+    {list.map((g,i)=><div className="gitem" key={i}><h3>{g[0]}</h3><p>{g[1]}</p></div>)}
+    {list.length===0 ? <p style={{marginTop:'20px'}}>Nothing matches that. Try a shorter word, or an acronym like MOS or AMC.</p> : null}
+  </div>;
+}
+
+function ExamView({exam, setExam, start, doneCount, total, back}){
+  if(!exam) return <div>
+    <p className="kicker">Assessment</p>
+    <h1>Exam</h1>
+    <p className="lede">Ten questions drawn at random from a pool of {EXAM.length}, covering both tracks.
+    One attempt each, with an explanation after every answer. Retake it as often as you like — the
+    questions will differ.</p>
+    <p>{doneCount < total
+      ? 'You have '+(total-doneCount)+' lesson'+(total-doneCount===1?'':'s')+' still open. The exam is available anyway.'
+      : 'Both tracks complete. Good time to take it.'}</p>
+    <div className="foot"><button className="btn" onClick={start}>Start the exam</button></div>
+  </div>;
+
+  if(exam.done){
+    const score = exam.ans.filter(a=>a.ok).length;
+    const missed = exam.ans.filter(a=>!a.ok);
+    return <div>
+      <p className="kicker">Exam complete</p>
+      <p className="score">{score}<small> / {exam.qs.length}</small></p>
+      <h1 style={{fontSize:'28px',marginTop:'14px',maxWidth:'24ch'}}>
+        {score===exam.qs.length ? 'Full marks.' : score>=7 ? 'Comfortably through.' : 'Worth another pass.'}</h1>
+      {missed.length ? <div>
+        <h2>What you missed</h2>
+        {missed.map((a,i)=><div className="note" key={i}>
+          <b>{EXAM[a.q].q}</b>{EXAM[a.q].e}</div>)}
+      </div> : <p className="lede">Nothing to review. You can read a QAT supply plan and say why any month is the colour it is.</p>}
+      <div className="foot">
+        <button className="btn" onClick={start}>Take it again</button>
+        <button className="btn ghost" onClick={back}>Back to the course</button>
+      </div>
+    </div>;
+  }
+
+  const qi = exam.qs[exam.i];
+  const q = EXAM[qi];
+  const answered = exam.picked!==null && exam.picked!==undefined;
+  return <div>
+    <p className="kicker">Exam · question {exam.i+1} of {exam.qs.length}</p>
+    <h1 style={{fontSize:'26px',maxWidth:'26ch'}}>One attempt each.</h1>
+    <section className="ex">
+      <p className="ex-tag"><i>Scored</i></p>
+      <p className="ex-q">{q.q}</p>
+      <div className="opts">{q.options.map((o,i)=>{
+        let mark=null;
+        if(answered && i===q.a) mark='right';
+        else if(answered && i===exam.picked) mark='wrong';
+        return <button key={i} className="opt" data-mark={mark} disabled={answered}
+          onClick={()=>setExam(Object.assign({},exam,{picked:i,
+            ans: exam.ans.concat([{q:qi, ok: i===q.a}])}))}>{o}</button>;
+      })}</div>
+      {answered ? <div className="feedback" data-tone={exam.picked===q.a?'right':'wrong'}>
+        <b>{exam.picked===q.a?'Correct.':'Not this time.'}</b>{q.e}</div> : null}
+    </section>
+    <div className="foot">
+      <button className="btn" disabled={!answered}
+        onClick={()=>{
+          if(exam.i < exam.qs.length-1) setExam(Object.assign({},exam,{i:exam.i+1,picked:null}));
+          else setExam(Object.assign({},exam,{done:true}));
+          window.scrollTo(0,0);
+        }}>{exam.i < exam.qs.length-1 ? 'Next question' : 'See my score'}</button>
+    </div>
+  </div>;
+}
+
+function App(){
+  const [tab,setTab] = useState('course');
+  const [loc,setLoc] = useState(null);
+  const [ex,setEx] = useState({});
+  const [exam,setExam] = useState(null);
+
+  const stOf = key => ex[key] || {status:'open', pick:null, seq:[], assign:{}, vals:{}, tries:0};
+  const setSt = (key,v) => setEx(prev=>{ const n=Object.assign({},prev); n[key]=v; return n; });
+  const isDone = ls => ls.exercises.every((e,i)=>{
+    const s = stOf(ls.id+':'+i).status; return s==='right'||s==='shown'; });
+
+  const doneCount = FLAT.filter(f=>isDone(f.ls)).length;
+  const overall = doneCount/FLAT.length;
+
+  function go(ti,li){ setTab('course'); setLoc({ti,li}); window.scrollTo(0,0); }
+  function startExam(){
+    const pool = EXAM.map((q,i)=>i);
+    for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=pool[i];pool[i]=pool[j];pool[j]=t; }
+    setExam({qs:pool.slice(0,10), i:0, ans:[], picked:null, done:false});
+    window.scrollTo(0,0);
+  }
+
+  return <div>
+    <div className="top">
+      <div className="top-in">
+        <button className="wordmark" style={{border:0,background:'none',padding:0}}
+          onClick={()=>{setTab('course');setLoc(null);window.scrollTo(0,0);}}>
+          QAT <span>· training</span></button>
+        <div className="tabs">
+          <button className="tab" data-on={tab==='course'?'1':'0'} onClick={()=>setTab('course')}>Course</button>
+          <button className="tab" data-on={tab==='glossary'?'1':'0'} onClick={()=>{setTab('glossary');window.scrollTo(0,0);}}>Glossary</button>
+          <button className="tab" data-on={tab==='exam'?'1':'0'} onClick={()=>{setTab('exam');window.scrollTo(0,0);}}>Exam</button>
+        </div>
+      </div>
+      <div className="meterwrap"><div className="meter"><i style={{width:(overall*100)+'%'}}></i></div></div>
+    </div>
+    <div className="shell">
+      {tab==='course'
+        ? <div className="grid">
+            <Rail loc={loc} go={go} isDone={isDone}/>
+            <main>{loc
+              ? <LessonView loc={loc} go={go} stOf={stOf} setSt={setSt} isDone={isDone}
+                  toExam={()=>{setTab('exam');window.scrollTo(0,0);}}/>
+              : <Home isDone={isDone} go={go}/>}</main>
+          </div>
+        : <div style={{marginTop:'30px'}}>
+            {tab==='glossary'
+              ? <Glossary/>
+              : <ExamView exam={exam} setExam={setExam} start={startExam}
+                  doneCount={doneCount} total={FLAT.length}
+                  back={()=>{setExam(null);setTab('course');setLoc(null);window.scrollTo(0,0);}}/>}
+          </div>}
+    </div>
+  </div>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
