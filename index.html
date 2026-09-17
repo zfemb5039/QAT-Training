@@ -2890,7 +2890,7 @@ function ExamView({exam, setExam, start, retry, doneCount, total, back, go}){
       </div> : <p className="lede">Nothing to review. You can read a QAT supply plan and say why any month is the colour it is.</p>}
       <div className="foot">
         {missed.length? <button className="btn" onClick={()=>retry(missed.map(a=>a.q))}>
-          Retry the {missed.length} I missed</button> : null}
+          Retry Incorrect Answers</button> : null}
         <button className={missed.length? 'btn ghost' : 'btn'} onClick={start}>Take a fresh exam</button>
         <button className="btn ghost" onClick={back}>Back to the course</button>
       </div>
