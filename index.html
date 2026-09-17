@@ -2814,7 +2814,7 @@ function Home({isDone, go, resume, onReset, stored}){
     })}</div>
     <div className="foot">
       {resume
-        ? <button className="btn" onClick={()=>go(resume.ti,resume.li)}>Resume: {resume.title}</button>
+        ? <button className="btn" onClick={()=>go(resume.ti,resume.li)}>Resume:  {resume.title}</button>
         : <button className="btn" onClick={()=>go(0,0)}>Start the first lesson</button>}
       {resume? <button className="btn ghost" onClick={()=>go(0,0)}>Start from the beginning</button> : null}
       {stored? <button className="btn ghost sm" onClick={onReset}>Reset progress</button> : null}
