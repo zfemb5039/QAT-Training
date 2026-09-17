@@ -275,6 +275,15 @@ button.shot:hover{border-color:var(--over)}
 .tcard h3{font-family:var(--sans);font-size:17px;margin:0 0 7px;color:var(--navy)}
 .tcard p{font-size:15px;color:var(--ink2);margin:0 0 12px;line-height:1.5}
 .tcard .pct{font-family:var(--sans);font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3)}
+/* ---------- footer logos ---------- */
+.pagefoot{max-width:1320px;margin:64px auto 0;padding:26px 28px 14px;border-top:1px solid var(--rule);
+  display:flex;gap:48px;align-items:center;justify-content:center;flex-wrap:wrap}
+.pagefoot img{width:auto;max-width:100%}
+.pagefoot .logo-qat{height:58px}
+.pagefoot .logo-usa{height:34px}
+@media(max-width:640px){.pagefoot{gap:28px;margin-top:44px}}
+@media print{.pagefoot{display:none}}
+
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .draw{stroke-dasharray:1500;stroke-dashoffset:1500;animation:draw 1.6s .2s ease forwards}
 @keyframes draw{to{stroke-dashoffset:0}}
@@ -3033,6 +3042,11 @@ function App(){
                   go={go} doneCount={doneCount} total={FLAT.length}
                   back={()=>{setExam(null);setTab('course');setLoc(null);window.scrollTo(0,0);}}/>}
           </div>}
+    </div>
+
+    <div className="pagefoot">
+      <img className="logo-qat" src="logos/QATLong_Final.png" alt="Quantification Analytics Tool" />
+      <img className="logo-usa" src="logos/USA_Flag_Logo_Horizontal_Serif.png" alt="United States of America" />
     </div>
   </div>;
 }
