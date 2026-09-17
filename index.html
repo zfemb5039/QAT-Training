@@ -2679,6 +2679,14 @@ function saveProgress(ex, loc){
     return true;
   }catch(e){ return false; }
 }
+function storageWorks(){
+  try{
+    const k = STORE_KEY + '-probe';
+    window.localStorage.setItem(k, '1');
+    window.localStorage.removeItem(k);
+    return true;
+  }catch(e){ return false; }
+}
 function clearProgress(){
   try{ window.localStorage.removeItem(STORE_KEY); }catch(e){}
 }
@@ -2798,12 +2806,12 @@ function Rail({loc, go, isDone}){
   </nav>;
 }
 
-function Home({isDone, go, resume, onReset, stored}){
+function Home({isDone, go, resume, onReset, stored, canSave}){
   return <div className="hero">
     <h1>Forecasting and Supply Planning in QAT</h1>
     <p className="lede">Seventeen lessons across two tracks, starting with forecasting and moving into
     supply planning. Worked calculations, fifteen interactive sandboxes and three graded tasks, a searchable glossary and a scored exam.
-    Everything runs in this page — nothing is stored anywhere, so a refresh starts you over.</p>
+    Everything runs in this page, and your progress is kept in this browser as you go.</p>
     <Chart opts={{values:[9.0,8.2,7.4,6.6,5.8,5.0,4.2,3.4,2.6,1.8,0.9,0],min:3,max:5,animate:true}}/>
     <div className="cards">{TRACKS.map((tr,ti)=>{
       const n = tr.lessons.filter(isDone).length;
@@ -2814,15 +2822,17 @@ function Home({isDone, go, resume, onReset, stored}){
     })}</div>
     <div className="foot">
       {resume
-        ? <button className="btn" onClick={()=>go(resume.ti,resume.li)}>Resume:  {resume.title}</button>
+        ? <button className="btn" onClick={()=>go(resume.ti,resume.li)}>Resume: {resume.title}</button>
         : <button className="btn" onClick={()=>go(0,0)}>Start the first lesson</button>}
       {resume? <button className="btn ghost" onClick={()=>go(0,0)}>Start from the beginning</button> : null}
       {stored? <button className="btn ghost sm" onClick={onReset}>Reset progress</button> : null}
     </div>
     <p style={{fontFamily:'var(--sans)',fontSize:'12.5px',color:'var(--ink3)',marginTop:'26px',maxWidth:'60ch'}}>
-      Content reviewed September 2026, against the QAT user manual and the FASP supply planning
-      training decks. Screenshots reflect the interface at that time and may differ from the version
-      you are using. {stored? 'Progress is saved in this browser only.' : 'Progress cannot be saved in this browser.'}
+      Content reviewed September 2026, against the QAT user manual and the FASP forecasting and
+      supply planning training decks. Screenshots reflect the interface at that time and may differ
+      from the version you are using. {canSave
+        ? 'Answers and your place are saved in this browser only, not to an account.'
+        : 'This browser is blocking storage, so progress will not be kept if you close the page.'}
     </p>
   </div>;
 }
@@ -2948,6 +2958,7 @@ function App(){
   const [ex,setEx] = useState(saved.current ? saved.current.ex : {});
   const [exam,setExam] = useState(null);
   const [help,setHelp] = useState(false);
+  const canSave = useRef(storageWorks());
   const [stored,setStored] = useState(!!saved.current);
   const mainRef = useRef(null);
   const firstRun = useRef(true);
@@ -3032,7 +3043,7 @@ function App(){
               <Boundary resetKey={loc? loc.ti+':'+loc.li : 'home'}>{loc
                 ? <LessonView loc={loc} go={go} stOf={stOf} setSt={setSt} isDone={isDone}
                     toExam={()=>{setTab('exam');window.scrollTo(0,0);}}/>
-                : <Home isDone={isDone} go={go} stored={stored}
+                : <Home isDone={isDone} go={go} stored={stored} canSave={canSave.current}
                     resume={resumePoint()} onReset={reset}/>}</Boundary></main>
           </div>
         : <div style={{marginTop:'30px'}}>
