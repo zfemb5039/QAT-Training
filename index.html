@@ -2854,7 +2854,7 @@ function Glossary(){
     <p className="kicker">Reference</p>
     <h1>Glossary</h1>
     <p className="lede">The terms that appear on QAT screens and in the manual, in the sense QAT uses them.</p>
-    <input className="gsearch" type="text" value={q} placeholder="Search terms and definitions"
+    <input className="gsearch" type="text" value={q} placeholder="Search"
       onChange={e=>setQ(e.target.value)} aria-label="Search the glossary" />
     <p className="gcount">{list.length} of {GLOSSARY.length} terms</p>
     {list.map((g,i)=><div className="gitem" key={i}><h3>{g[0]}</h3><p>{g[1]}</p></div>)}
