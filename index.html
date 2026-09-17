@@ -289,6 +289,11 @@ button.shot:hover{border-color:var(--over)}
 .tasksetup{font-family:var(--sans);font-size:13px;color:var(--ink2);margin:0;padding-top:10px;
   border-top:1px solid var(--tint);max-width:64ch}
 
+.refline{display:block;margin-top:10px;font-size:13.5px;color:var(--ink3)}
+.reflink{background:none;border:0;padding:0;font-family:var(--sans);font-size:13.5px;font-weight:600;
+  color:var(--navy);border-bottom:1px solid var(--tint);cursor:pointer;text-align:left}
+.reflink:hover{border-bottom-color:var(--navy)}
+
 /* ---------- help panel ---------- */
 .helpbtn{background:transparent;border:1.5px solid rgba(255,255,255,.45);color:#fff;
   font-family:var(--sans);font-size:13.5px;font-weight:600;padding:6px 14px;border-radius:999px;
@@ -1272,6 +1277,12 @@ const TRACKS = [
  {id:'sp', title:'Supply planning', blurb:'Reading the screen and the graph, AMC and MOS, min and max, shipments, suggestions, adjustments, expiry and scenarios.', lessons:SP}
 ];
 
+/* ============================ lesson lookup for exam references ============================ */
+const LESSON_REF = {};
+TRACKS.forEach((tr,ti)=> tr.lessons.forEach((ls,li)=>{
+  LESSON_REF[ls.id] = {ti:ti, li:li, track:tr.title, num:li+1, title:ls.title};
+}));
+
 /* ============================ glossary ============================ */
 const GLOSSARY = [
  ['AMC','Average monthly consumption. A dynamic value recalculated each month. The QAT default averages the 3 previous months, the current month and 2 future months; missing months are null, not zero. Administrators can widen the window to 12 months either side.'],
@@ -1318,88 +1329,88 @@ const GLOSSARY = [
 const EXAM = [
  {q:'What does QAT\u2019s default AMC window cover?',
   options:['The last 3 months','The last 6 months','3 months back, the current month, and 2 months forward','The last 12 months'],
-  a:2, e:'Six months in total, reaching two months into the forecast. Administrators can extend it to 12 months either side.'},
+  a:2, e:'Six months in total, reaching two months into the forecast. Administrators can extend it to 12 months either side.', ref:'sp3'},
  {q:'A month inside the AMC window has no consumption data. How is it treated?',
   options:['As zero','As null and excluded from the average','Replaced by the forecast','The AMC is not calculated at all'],
-  a:1, e:'Null, not zero. Counting it as zero would understate the AMC and shrink every order built on it.'},
+  a:1, e:'Null, not zero. Counting it as zero would understate the AMC and shrink every order built on it.', ref:'sp3'},
  {q:'How is the maximum stock level derived for a product planned by MOS?',
   options:['Typed in by the program administrator','Minimum plus the reorder interval','Twice the minimum','AMC times the lead time'],
-  a:1, e:'Max MOS = min MOS + reorder interval. Only the minimum is set directly.'},
+  a:1, e:'Max MOS = min MOS + reorder interval. Only the minimum is set directly.', ref:'sp4'},
  {q:'Which two shipment statuses are excluded from projected balances?',
   options:['Planned and on hold','Suggested and cancelled','Submitted and approved','Arrived and received'],
-  a:1, e:'Everything else counts, including on hold.'},
+  a:1, e:'Everything else counts, including on hold.', ref:'sp5'},
  {q:'A planning unit is stocked out, and both of the next two months are below minimum. What does QAT suggest?',
   options:['No shipment','A shipment bringing the month to minimum','A shipment bringing the month to maximum','An emergency shipment to twice the maximum'],
-  a:2, e:'Stockout plus both following months below min means a top-up to maximum.'},
+  a:2, e:'Stockout plus both following months below min means a top-up to maximum.', ref:'sp6'},
  {q:'Where does QAT place a suggested shipment quantity?',
   options:['In the month stock goes below minimum','In month N minus the distribution lead time','In the current month','In the first month of the plan'],
-  a:1, e:'It appears in the month you would need to act, not the month the problem surfaces.'},
+  a:1, e:'It appears in the month you would need to act, not the month the problem surfaces.', ref:'sp6'},
  {q:'A shipment\u2019s batch expiry date is calculated from what?',
   options:['The order date plus shelf life','The receive date plus shelf life','The supplier\u2019s stated expiry only','The end of the planning horizon'],
-  a:1, e:'Receive date plus the planning unit\u2019s shelf life, and you can override it per batch.'},
+  a:1, e:'Receive date plus the planning unit\u2019s shelf life, and you can override it per batch.', ref:'sp7'},
  {q:'A positive manual adjustment is entered. Which batch gets it by default?',
   options:['The one expiring soonest','The one with the longest shelf life','The largest batch','It is split proportionally'],
-  a:1, e:'Best-case logic sends positives to the longest shelf life and negatives to the soonest expiry.'},
+  a:1, e:'Best-case logic sends positives to the longest shelf life and negatives to the soonest expiry.', ref:'sp7'},
  {q:'Which product profile calls for plan by quantity?',
   options:['A high-volume ACT with steady consumption','Anti-venom held at every district with high expiry','A contraceptive with a stable AMC','Any product with a long shelf life'],
-  a:1, e:'Low consumption, high inventory relative to it, and shipments replacing expired rather than consumed product.'},
+  a:1, e:'Low consumption, high inventory relative to it, and shipments replacing expired rather than consumed product.', ref:'sp4'},
  {q:'A supply plan shows an unmet demand row with values in it. What does that mean?',
   options:['Stock went negative','Demand exceeded available stock and was clipped','The forecast was too low','Shipments were cancelled'],
-  a:1, e:'QAT never shows negative stock. Unmet demand is what would have been consumed had stock been there.'},
+  a:1, e:'QAT never shows negative stock. Unmet demand is what would have been consumed had stock been there.', ref:'sp7'},
  {q:'MOS is calculated as which of these?',
   options:['Opening balance divided by AMC','Ending balance divided by AMC','Ending balance divided by the forecast','AMC divided by ending balance'],
-  a:1, e:'Ending balance ÷ AMC, recalculated each month.'},
+  a:1, e:'Ending balance ÷ AMC, recalculated each month.', ref:'sp3'},
  {q:'For a product planned by quantity, which row is colour-coded for stock status?',
   options:['Months of stock','Ending balance','Consumption','Shipments'],
-  a:1, e:'Plan by MOS colours the months of stock row; plan by quantity colours the ending balance.'},
+  a:1, e:'Plan by MOS colours the months of stock row; plan by quantity colours the ending balance.', ref:'sp4'},
  {q:'Which scenario tests what the plan looks like without orders that have no money behind them?',
   options:['Re-plan supply plan','Remove unfunded shipments','Decrease forecast consumption','Phase product out'],
-  a:1, e:'It drops every shipment whose funding source is still TBD.'},
+  a:1, e:'It drops every shipment whose funding source is still TBD.', ref:'sp8'},
  {q:'An alternate reporting unit has a multiplier of 20 and 340 units are reported. How many planning units is that?',
   options:['320','6,800','17','360'],
-  a:1, e:'340 x 20 = 6,800 planning units.'},
+  a:1, e:'340 x 20 = 6,800 planning units.', ref:'fc2'},
  {q:'MAPE is much worse than WAPE for a forecast version. What does that suggest?',
   options:['The largest months were badly forecast','The errors are concentrated in low-volume months','The forecast is biased high throughout','The metrics were calculated on different periods'],
-  a:1, e:'MAPE weights every month equally, so small months with large percentage errors dominate it. WAPE weights by volume.'},
+  a:1, e:'MAPE weights every month equally, so small months with large percentage errors dominate it. WAPE weights by volume.', ref:'fc8'},
  {q:'Which forecasting method explicitly handles seasonality?',
   options:['Linear extrapolation','Triple exponential smoothing (Holt-Winters)','A usage template','Simple moving average'],
-  a:1, e:'Holt-Winters models level, trend and seasonality together.'},
+  a:1, e:'Holt-Winters models level, trend and seasonality together.', ref:'fc5'},
  {q:'Where does a shipment appear on the supply plan?',
   options:['The month it was ordered','The month it shipped','The month it is expected to be received and usable','The month it was approved'],
-  a:2, e:'Expected receive date, regardless of order status.'},
+  a:2, e:'Expected receive date, regardless of order status.', ref:'sp5'},
  {q:'Which of these requires raising a ticket rather than editing in your program?',
   options:['The minimum stock level','The reorder interval','Adding a product to the catalogue','The AMC window'],
-  a:2, e:'The product catalogue is realm-level master data, shared by everyone in the realm.'},
+  a:2, e:'The product catalogue is realm-level master data, shared by everyone in the realm.', ref:'fc1'},
  {q:'What are the two ways a shipment can be flagged as an emergency in QAT?',
   options:['Air freight, or local procurement','A user tags it, or QAT tags a planned shipment that breaks the lead times','The funder requests it, or it exceeds max','It is suggested, or it is recalculated'],
-  a:1, e:'Manual tagging, or QAT flagging a planned shipment whose dates the lead times do not permit.'},
+  a:1, e:'Manual tagging, or QAT flagging a planned shipment whose dates the lead times do not permit.', ref:'sp5'},
  {q:'A future month has a planned shipment of 11,000 and a QAT suggested shipment of 26,500. What does Recalculate propose?',
   options:['26,500','11,000','37,500','15,500'],
-  a:2, e:'Recalculated quantity = QAT suggested + current planned, so 37,500. It adds to the existing shipment rather than replacing it.'},
+  a:2, e:'Recalculated quantity = QAT suggested + current planned, so 37,500. It adds to the existing shipment rather than replacing it.', ref:'sp6'},
  {q:'A facility reports 4,000 units consumed in a 30-day month with 6 days of stockout. What is the unmet demand?',
   options:['800','1,000','24,000','4,000'],
-  a:1, e:'4,000 over 24 available days is 166.7 a day; six missing days is 1,000 units. True demand was 5,000.'},
+  a:1, e:'4,000 over 24 available days is 166.7 a day; six missing days is 1,000 units. True demand was 5,000.', ref:'sp7'},
  {q:'You enter an inventory count of 203,000 where QAT projected 204,000. What does QAT record?',
   options:['Nothing — it overwrites the projection','An auto-adjustment of 1,000','Unmet demand of 1,000','An error requiring a note'],
-  a:1, e:'Auto-adjustments are QAT keeping a trail of where its projection disagreed with a real count. They cannot be overridden.'},
+  a:1, e:'Auto-adjustments are QAT keeping a trail of where its projection disagreed with a real count. They cannot be overridden.', ref:'sp7'},
  {q:'Months of stock shows grey, marked N/A. What does that mean?',
   options:['The product is overstocked','The product is stocked out','QAT could not calculate an AMC','The shipment is on hold'],
-  a:2, e:'Grey means no AMC, usually from missing consumption data. Stock status is unknown, and no shipment will be suggested either.'},
+  a:2, e:'Grey means no AMC, usually from missing consumption data. Stock status is unknown, and no shipment will be suggested either.', ref:'sp3'},
  {q:'Which is true of inventory records versus adjustments?',
   options:['Both can be entered for future months','Neither can be entered for future months','Inventory is limited to the current or past months; adjustments can be future-dated','Adjustments are limited to past months; inventory can be future-dated'],
-  a:2, e:'An inventory count is an observation, so it cannot be about the future. A future adjustment — a known loss or transfer — is a legitimate planning assumption.'},
+  a:2, e:'An inventory count is an observation, so it cannot be about the future. A future adjustment — a known loss or transfer — is a legitimate planning assumption.', ref:'sp7'},
  {q:'A product has never been issued in-country and has no consumption history. Which forecasting route fits?',
   options:['Linear extrapolation on a short window','A tree forecast from morbidity or service data','ARIMA with default settings','Copy a similar product\u2019s history'],
-  a:1, e:'With nothing to extrapolate, a tree converts the underlying driver into commodity quantities.'},
+  a:1, e:'With nothing to extrapolate, a tree converts the underlying driver into commodity quantities.', ref:'fc3'},
  {q:'Which unit is always the smallest?',
   options:['Planning unit','Alternate reporting unit','Forecasting unit','Equivalency unit'],
-  a:2, e:'You forecast in tablets and plan in packs. FU is always smaller than or equal to PU.'},
+  a:2, e:'You forecast in tablets and plan in packs. FU is always smaller than or equal to PU.', ref:'fc2'},
  {q:'A delivery date imported from ARTMIS is wrong. Where is it fixed?',
   options:['Directly in the QAT shipment record','In the upstream procurement system','By deleting and re-entering the shipment','By raising a master data ticket'],
-  a:1, e:'ERP-linked fields are read-only in QAT by design; a local edit would be reversed at the next sync.'},
+  a:1, e:'ERP-linked fields are read-only in QAT by design; a local edit would be reversed at the next sync.', ref:'sp5'},
  {q:'A tree forecast and a consumption forecast for the same product differ by 40%. What is the right first step?',
   options:['Average them','Use the higher of the two','Identify which assumption drives the gap','Discard the tree forecast'],
-  a:2, e:'The difference indicates either overstated coverage or consumption suppressed by stockouts, and should be investigated before a version is selected.'},
+  a:2, e:'The difference indicates either overstated coverage or consumption suppressed by stockouts, and should be investigated before a version is selected.', ref:'fc3'},
 ];
 
 /* ============================ shared UI ============================ */
@@ -2850,7 +2861,7 @@ function Glossary(){
   </div>;
 }
 
-function ExamView({exam, setExam, start, retry, doneCount, total, back}){
+function ExamView({exam, setExam, start, retry, doneCount, total, back, go}){
   if(!exam) return <div>
     <p className="kicker">Assessment</p>
     <h1>Exam</h1>
@@ -2903,7 +2914,11 @@ function ExamView({exam, setExam, start, retry, doneCount, total, back}){
             ans: exam.ans.concat([{q:qi, ok: i===q.a}])}))}>{o}</button>;
       })}</div>
       {answered ? <div className="feedback" data-tone={exam.picked===q.a?'right':'wrong'} role="status" aria-live="polite">
-        <b>{exam.picked===q.a?'Correct.':'Not this time.'}</b>{q.e}</div> : null}
+        <b>{exam.picked===q.a?'Correct.':'Not this time.'}</b>{q.e}
+        {LESSON_REF[q.ref]? <span className="refline">Covered in{' '}
+          <button className="reflink" onClick={()=>go(LESSON_REF[q.ref].ti, LESSON_REF[q.ref].li)}>
+            {LESSON_REF[q.ref].track}, lesson {LESSON_REF[q.ref].num}: {LESSON_REF[q.ref].title}</button>
+        </span> : null}</div> : null}
     </section>
     <div className="foot">
       <button className="btn" disabled={!answered}
@@ -3014,7 +3029,7 @@ function App(){
             {tab==='glossary'
               ? <Glossary/>
               : <ExamView exam={exam} setExam={setExam} start={startExam} retry={retryExam}
-                  doneCount={doneCount} total={FLAT.length}
+                  go={go} doneCount={doneCount} total={FLAT.length}
                   back={()=>{setExam(null);setTab('course');setLoc(null);window.scrollTo(0,0);}}/>}
           </div>}
     </div>
